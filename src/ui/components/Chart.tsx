@@ -6,25 +6,36 @@ import { buildChartModel } from './chartModel';
 
 const W = 340;
 const H = 220;
-const PAD = { top: 12, right: 12, bottom: 34, left: 44 };
+const PAD = { top: 26, right: 12, bottom: 34, left: 44 };
 const DASHES = ['', '6 4', '2 4'];
 
-function xTicks(kind: RangeKind, range: DateRange): { t: Date; label: string }[] {
-  const out: { t: Date; label: string }[] = [];
+function xTicks(
+  kind: RangeKind,
+  range: DateRange,
+): { t: Date; label: string; anchor: 'start' | 'middle' | 'end' }[] {
+  const out: { t: Date; label: string; anchor: 'start' | 'middle' | 'end' }[] = [];
   const cur = new Date(range.start);
   if (kind === 'day') {
     for (let h = 0; h <= 24; h += 6) {
       const t = new Date(range.start);
       t.setHours(h, 0, 0, 0);
       if (h === 24) t.setTime(range.end.getTime());
-      out.push({ t, label: h === 24 ? '' : `${String(h).padStart(2, '0')}:00` });
+      out.push({
+        t,
+        label: h === 24 ? '' : `${String(h).padStart(2, '0')}:00`,
+        anchor: h === 0 ? 'start' : 'middle',
+      });
     }
     return out;
   }
   const stepDays = kind === 'week' ? 1 : 7;
   while (cur < range.end) {
+    // Week: label each day at its midpoint. Month: label the start of each week.
+    const mid = new Date(cur);
+    if (kind === 'week') mid.setHours(12, 0, 0, 0);
     out.push({
-      t: new Date(cur),
+      t: mid,
+      anchor: kind === 'week' ? 'middle' : 'start',
       label:
         kind === 'week'
           ? cur.toLocaleDateString(undefined, { weekday: 'short' })
@@ -101,16 +112,11 @@ export function Chart(props: {
             </g>
           ))}
           {ticks.map((t, i) => (
-            <text
-              key={i}
-              x={model.xFor(t.t)}
-              y={H - PAD.bottom + 16}
-              text-anchor={i === 0 ? 'start' : 'middle'}
-            >
+            <text key={i} x={model.xFor(t.t)} y={H - PAD.bottom + 16} text-anchor={t.anchor}>
               {t.label}
             </text>
           ))}
-          <text x={4} y={10}>
+          <text x={4} y={12}>
             {uLabel}
           </text>
         </g>

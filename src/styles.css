@@ -159,6 +159,11 @@ h3 {
   margin: 20px 0 8px;
 }
 
+a {
+  color: var(--primary);
+  text-underline-offset: 3px;
+}
+
 .muted {
   color: var(--text-muted);
 }
