@@ -92,6 +92,34 @@ describe('verifyDist', () => {
     expect(failures(verifyDist(dist))).toEqual([]);
   });
 
+  it('passes for a sub-path build (GitHub Pages) with relative manifest URLs', () => {
+    writeFileSync(
+      join(dist, 'manifest.webmanifest'),
+      JSON.stringify({
+        ...manifest,
+        start_url: './',
+        scope: './',
+        id: './',
+        icons: manifest.icons.map((i) => ({ ...i, src: i.src.replace(/^\//, '') })),
+      }),
+    );
+    writeFileSync(
+      join(dist, 'index.html'),
+      '<html><head><link rel="manifest" href="/sugar-daddy/manifest.webmanifest" />' +
+        '<link rel="apple-touch-icon" href="/sugar-daddy/icons/apple-touch-icon-180.png" /></head></html>',
+    );
+    expect(failures(verifyDist(dist))).toEqual([]);
+  });
+
+  it('still fails when index.html links some other manifest', () => {
+    writeFileSync(
+      join(dist, 'index.html'),
+      '<html><head><link rel="manifest" href="/other.json" />' +
+        '<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" /></head></html>',
+    );
+    expect(failures(verifyDist(dist))).toEqual(['index.html links manifest']);
+  });
+
   it('fails when an icon size does not match the declared sizes', () => {
     writeFileSync(join(dist, 'icons/icon-512.png'), fakePng(256, 256));
     expect(failures(verifyDist(dist)).join(' ')).toMatch(/icon-512/);

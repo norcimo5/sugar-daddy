@@ -205,7 +205,12 @@ export function App(props: AppProps) {
       </a>
       <div class="app">
         <header class="app-header">
-          <img src="/icons/icon-192.png" alt="" width={40} height={40} />
+          <img
+            src={`${import.meta.env.BASE_URL}icons/icon-192.png`}
+            alt=""
+            width={40}
+            height={40}
+          />
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 class="brand">Sugar Daddy</h1>
             <p class="tagline">{TAGLINE}</p>

@@ -8,14 +8,20 @@ const BUILD_ID = 'dev';
 
 const CACHE_PREFIX = 'sugar-daddy-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_ID}`;
+// The app may live under a sub-path (e.g. /sugar-daddy/ on GitHub Pages). Precache entries are
+// written relative to the app root ('/index.html'); resolve them against this worker's scope.
+const BASE = new URL(self.registration.scope).pathname;
+const abs = (path) => BASE + path.replace(/^\//, '');
 // '/' rather than '/index.html': hosts with "pretty URLs" (Cloudflare Pages, Netlify) answer
 // /index.html with a redirect, and browsers refuse redirected responses for navigations.
-const APP_SHELL = '/';
-const APP_SHELL_FALLBACK = '/index.html';
+const APP_SHELL = abs('/');
+const APP_SHELL_FALLBACK = abs('/index.html');
 
 self.addEventListener('install', (event) => {
   // No automatic skipWaiting: the page asks via {type: 'SKIP_WAITING'} after the user agrees.
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(self.__PRECACHE__)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(self.__PRECACHE__.map(abs))),
+  );
 });
 
 self.addEventListener('message', (event) => {
@@ -86,7 +92,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   // Never touch (or cache) cross-origin requests.
   if (url.origin !== self.location.origin) return;
-  if (url.pathname === '/sw.js') return;
+  if (url.pathname === abs('/sw.js')) return;
   event.respondWith(request.mode === 'navigate' ? handleNavigation(request) : handleAsset(request));
 });
 
@@ -98,7 +104,7 @@ self.addEventListener('notificationclick', (event) => {
         (client) => new URL(client.url).origin === self.location.origin,
       );
       if (existing) return existing.focus();
-      return self.clients.openWindow('/');
+      return self.clients.openWindow(BASE);
     }),
   );
 });

@@ -23,8 +23,11 @@ test.describe('PWA', () => {
     const m = await res.json();
     expect(m.name).toBe('Sugar Daddy');
     expect(m.short_name).toBeTruthy();
-    expect(m.start_url).toBe('/');
-    expect(m.scope).toBe('/');
+    // Relative in the file (works under any sub-path); both must resolve to the app root.
+    const manifestUrl = new URL(href!, page.url()).href;
+    const appRoot = new URL('/', page.url()).href;
+    expect(new URL(m.start_url, manifestUrl).href).toBe(appRoot);
+    expect(new URL(m.scope, manifestUrl).href).toBe(appRoot);
     expect(m.display).toBe('standalone');
     expect(m.theme_color).toMatch(/^#[0-9a-f]{6}$/i);
     expect(m.background_color).toMatch(/^#[0-9a-f]{6}$/i);

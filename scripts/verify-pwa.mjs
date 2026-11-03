@@ -107,11 +107,14 @@ export function verifyDist(dist) {
   const html = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
   check(
     'index.html links manifest',
-    /<link[^>]+rel=["']manifest["'][^>]+href=["']\/manifest\.webmanifest["']/.test(html),
+    // Any base path is fine (e.g. /sugar-daddy/ on GitHub Pages).
+    /<link[^>]+rel=["']manifest["'][^>]+href=["'](?:\/[\w.-]+)*\/manifest\.webmanifest["']/.test(
+      html,
+    ),
   );
   check(
     'index.html links apple-touch-icon',
-    /<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']\/icons\/apple-touch-icon-180\.png["']/.test(
+    /<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["'](?:\/[\w.-]+)*\/icons\/apple-touch-icon-180\.png["']/.test(
       html,
     ),
   );

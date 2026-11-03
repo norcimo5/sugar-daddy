@@ -33,7 +33,11 @@ export function slotsToNotify(due: SlotState[], fired: Set<string>): SlotState[]
 
 export async function showNotification(title: string, body: string, tag: string): Promise<boolean> {
   if (notificationSupport() !== 'granted') return false;
-  const options: NotificationOptions = { body, tag, icon: '/icons/icon-192.png' };
+  const options: NotificationOptions = {
+    body,
+    tag,
+    icon: `${import.meta.env.BASE_URL}icons/icon-192.png`,
+  };
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
     if (reg) {

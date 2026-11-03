@@ -2,21 +2,31 @@
   "name": "Sugar Daddy",
   "short_name": "Sugar Daddy",
   "description": "Sugar Daddy — Your glucose. Your rules. A private, offline-first log for glucose and other measurements.",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#7a2e4f",
-  "background_color": "#fff6ef",
+  "theme_color": "#070d14",
+  "background_color": "#070d14",
   "lang": "en",
   "dir": "ltr",
   "categories": ["health", "medical", "lifestyle"],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     {
-      "src": "/icons/icon-maskable-512.png",
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

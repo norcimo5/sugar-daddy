@@ -20,7 +20,7 @@ export function registerServiceWorker(onUpdate: (apply: () => void) => void): vo
   };
 
   container
-    .register('/sw.js', { scope: '/' })
+    .register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL })
     .then((registration) => {
       if (registration.waiting && container.controller) report(registration.waiting);
       registration.addEventListener('updatefound', () => {

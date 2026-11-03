@@ -96,10 +96,12 @@ installed.
 - GitHub Pages cannot set custom headers. The Content Security Policy in the `<meta>` tag in
   `index.html` still applies, but `frame-ancestors`, `X-Frame-Options` and the other headers
   from `_headers` do not, and you cannot control caching.
-- The app must be served at the **root of a domain** (for example `https://<user>.github.io/`
-  or a custom domain), because the manifest's `scope` and `start_url` are `/` and the service
-  worker is registered at `/sw.js`. A project page such as `https://<user>.github.io/<repo>/`
-  will not work without changing those paths.
+- This repo deploys itself: `.github/workflows/pages.yml` runs format, lint, typecheck and unit
+  tests, builds with `BASE_PATH=/<repo>/`, and publishes `dist/` on every push to `master`.
+  Live at **https://norcimo5.github.io/sugar-daddy/**.
+- Sub-paths work: build with `BASE_PATH=/your-path/ npm run build` (and preview with the same
+  variable). The manifest uses relative URLs and the service worker derives its base from its
+  scope.
 
 ### Any other server (nginx example)
 
