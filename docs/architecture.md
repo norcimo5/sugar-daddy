@@ -102,14 +102,15 @@ for each enabled reminder today: `upcoming | due | satisfied | missed | dismisse
 Satisfaction window: `[slot − 120 min, slot + grace]`. The UI re-evaluates every 30 s and on
 visibility change. `notify.ts` fires one `Notification` (via the service-worker registration
 when available) when a slot first becomes due while the page is alive; fired slots are remembered
-per day in memory+kv so it never repeats.
+per day (keys `${reminderId}@${date}` only, in memory and `localStorage`) so a reload never
+re-notifies.
 
 ## Service worker
 
 `sw.js` precaches `index.html` + hashed assets (list injected at build into
 `sw.js` as `self.__PRECACHE`), cache name includes the build id. Navigation requests → cache-first
 `index.html` fallback; assets → cache-first. On activate deletes old caches. Update flow: the page
-detects a waiting worker and shows "Update available — Reload".
+detects a waiting worker and shows an "Update available" banner with a Reload button.
 
 ## Security headers (deployment)
 

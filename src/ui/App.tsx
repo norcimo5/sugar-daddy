@@ -14,7 +14,22 @@ import { Settings } from './screens/Settings';
 import { About } from './screens/About';
 import { CARE_TEAM_NOTE, DISCLAIMER, TAGLINE, welcomeMessage } from '../domain/copy';
 import { evaluateReminders } from '../domain/reminders';
-import { reminderNotificationText, showNotification, slotsToNotify } from '../app/notify';
+import {
+  loadFired,
+  reminderNotificationText,
+  saveFired,
+  showNotification,
+  slotsToNotify,
+} from '../app/notify';
+import { localDateKey } from '../domain/time';
+
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
 import { useNow } from './useNow';
 
 export interface AppProps {
@@ -64,7 +79,7 @@ export function App(props: AppProps) {
 
   // In-page reminder notifications (best effort; only while the app is alive).
   const now = useNow(props.clock);
-  const fired = useRef(new Set<string>());
+  const fired = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!data.settings.notificationsEnabled || data.loading) return;
     const enabled = new Set(data.enabledMetrics.map((d) => d.id));
@@ -75,9 +90,15 @@ export function App(props: AppProps) {
       dismissals: data.dismissals,
       graceMinutes: data.settings.graceMinutes,
     });
-    for (const slot of slotsToNotify(due, fired.current)) {
+    const today = localDateKey(now);
+    if (!fired.current || ![...fired.current].every((k) => k.endsWith(`@${today}`))) {
+      fired.current = loadFired(safeLocalStorage(), today);
+    }
+    const toNotify = slotsToNotify(due, fired.current);
+    if (toNotify.length) saveFired(safeLocalStorage(), fired.current);
+    for (const slot of toNotify) {
       const def = data.registry.get(slot.reminder.metricId);
-      const text = reminderNotificationText(def?.shortName ?? 'reading');
+      const text = reminderNotificationText(def?.name.toLowerCase() ?? 'reading');
       void showNotification(text.title, text.body, `${slot.reminder.id}@${slot.date}`);
     }
   }, [now, data]);

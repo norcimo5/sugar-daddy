@@ -1,4 +1,10 @@
-import { slotsToNotify, notificationSupport, reminderNotificationText } from './notify';
+import {
+  slotsToNotify,
+  notificationSupport,
+  reminderNotificationText,
+  loadFired,
+  saveFired,
+} from './notify';
 
 const slot = (reminderId: string, date: string) =>
   ({ reminder: { id: reminderId }, date }) as unknown as Parameters<
@@ -34,5 +40,42 @@ describe('reminderNotificationText', () => {
       title: 'Sugar Daddy',
       body: 'Time to log your glucose.',
     });
+  });
+});
+
+describe('fired-notification memory', () => {
+  function memoryStorage() {
+    const m = new Map<string, string>();
+    return {
+      getItem: (k: string) => m.get(k) ?? null,
+      setItem: (k: string, v: string) => void m.set(k, v),
+    };
+  }
+
+  it('survives a reload so a due slot is not notified twice', () => {
+    const storage = memoryStorage();
+    const fired = loadFired(storage, '2026-11-03');
+    slotsToNotify([slot('a', '2026-11-03')], fired);
+    saveFired(storage, fired);
+    const again = loadFired(storage, '2026-11-03');
+    expect(slotsToNotify([slot('a', '2026-11-03')], again)).toEqual([]);
+  });
+
+  it('forgets keys from earlier days and tolerates broken storage', () => {
+    const storage = memoryStorage();
+    saveFired(storage, new Set(['a@2026-11-01', 'b@2026-11-03']));
+    expect([...loadFired(storage, '2026-11-03')]).toEqual(['b@2026-11-03']);
+    storage.setItem('sugar-daddy.notified', '{not json');
+    expect(loadFired(storage, '2026-11-03').size).toBe(0);
+    const throwing = {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    };
+    expect(loadFired(throwing, '2026-11-03').size).toBe(0);
+    expect(() => saveFired(throwing, new Set(['x@2026-11-03']))).not.toThrow();
   });
 });

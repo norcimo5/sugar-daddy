@@ -52,9 +52,9 @@ export function Today() {
             data-testid="missed-banner"
           >
             <strong>
-              Missed {def.shortName} reading — {formatTime(s.dueAt)}
+              Missed {def.name.toLowerCase()} reading — {formatTime(s.dueAt)}
             </strong>
-            <span>No {def.shortName} reading was logged for this time.</span>
+            <span>No {def.name.toLowerCase()} reading was logged for this time.</span>
             <div class="btn-row" style={{ marginTop: '10px' }}>
               <a class="btn btn-primary" href={`#/log/${def.id}`}>
                 Log now
@@ -82,7 +82,7 @@ export function Today() {
         return (
           <div class="banner info" role="status" key={`due-${s.reminder.id}`}>
             <strong>
-              {def.shortName} reading due — {formatTime(s.dueAt)}
+              {def.name} reading due — {formatTime(s.dueAt)}
             </strong>
           </div>
         );

@@ -47,3 +47,31 @@ export async function showNotification(title: string, body: string, tag: string)
     return false;
   }
 }
+
+const FIRED_KEY = 'sugar-daddy.notified';
+type KeyStore = { getItem(k: string): string | null; setItem(k: string, v: string): void };
+
+/**
+ * Which reminder slots were already notified, so a reload never re-notifies.
+ * Holds only `${reminderId}@${date}` keys — no health data. Browser storage is a
+ * convenience here; if it is unavailable we fall back to in-memory only.
+ */
+export function loadFired(storage: KeyStore | undefined, today: string): Set<string> {
+  try {
+    const parsed: unknown = JSON.parse(storage?.getItem(FIRED_KEY) ?? '[]');
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(
+      parsed.filter((k): k is string => typeof k === 'string' && k.endsWith(`@${today}`)),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveFired(storage: KeyStore | undefined, fired: Set<string>): void {
+  try {
+    storage?.setItem(FIRED_KEY, JSON.stringify([...fired]));
+  } catch {
+    // Storage blocked (private mode etc.): keep the in-memory set only.
+  }
+}

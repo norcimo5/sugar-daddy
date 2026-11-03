@@ -6,7 +6,9 @@
 /** Built-ins: 'glucose' | 'blood_pressure' | 'weight' | 'ketones'. Extensible. */
 export type MetricId = string;
 
-export type Unit = 'mg/dL' | 'mmol/L' | 'mmHg' | 'kg' | 'lb';
+/** Every unit the app understands. Add a new unit here (and in units.ts decimals). */
+export const UNITS = ['mg/dL', 'mmol/L', 'mmHg', 'kg', 'lb'] as const;
+export type Unit = (typeof UNITS)[number];
 
 export interface FieldLimits {
   min: number;

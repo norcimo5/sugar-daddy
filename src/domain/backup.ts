@@ -5,6 +5,7 @@
 import {
   GRACE_MAX,
   GRACE_MIN,
+  UNITS,
   type AppSnapshot,
   type Dismissal,
   type Measurement,
@@ -120,7 +121,6 @@ function isLocalDate(v: unknown): v is string {
   return !!m && isCalendarDate(Number(m[1]), Number(m[2]), Number(m[3]));
 }
 
-const UNITS: readonly Unit[] = ['mg/dL', 'mmol/L', 'mmHg', 'kg', 'lb'];
 const TONES: readonly Tone[] = ['playful', 'neutral'];
 const TEXT_SIZES: readonly TextSize[] = ['standard', 'large', 'xlarge'];
 const THRESHOLD_KEYS: readonly (keyof Thresholds)[] = [
