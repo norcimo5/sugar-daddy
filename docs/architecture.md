@@ -99,7 +99,7 @@ reject, and the UI shows "Not saved" with the reason.
 
 Pure function `evaluateReminders(now, reminders, measurements, dismissals, graceMinutes, tz)` →
 for each enabled reminder today: `upcoming | due | satisfied | missed | dismissed`, plus `next`.
-Satisfaction window: `[slot − 120 min, slot + grace]`. The UI re-evaluates every 30 s and on
+Satisfaction window: `[slot − 120 min, max(slot + grace, next same-metric slot − 120 min | midnight))`. The UI re-evaluates every 30 s and on
 visibility change. `notify.ts` fires one `Notification` (via the service-worker registration
 when available) when a slot first becomes due while the page is alive; fired slots are remembered
 per day (keys `${reminderId}@${date}` only, in memory and `localStorage`) so a reload never

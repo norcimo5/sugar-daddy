@@ -86,8 +86,9 @@ Primary user: a hospitalized, non-technical, possibly tired patient using one ha
 
 - R1 Multiple reminders: time (HH:MM), metric, enabled flag.
 - R2 Global grace period (default 60 min, configurable 15–240).
-- R3 A slot is **satisfied** by any reading of that metric from 2 h before its time through the
-  end of the grace window; **missed** after the grace window with no satisfying reading
+- R3 A slot is **satisfied** by any reading of that metric from 2 h before its time until the
+  next same-metric slot's 2 h lookback begins (or local midnight), and never earlier than the
+  end of its grace window — so "Log now" from a missed banner clears it; **missed** after the grace window with no satisfying reading
   and not dismissed.
 - R4 "Not needed" dismisses a slot for that date without creating a reading.
 - R5 Next reminder shown on Today.

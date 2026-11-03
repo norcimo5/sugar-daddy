@@ -52,16 +52,14 @@ async function fromNetworkAndCache(request) {
 /** A redirected Response cannot answer a navigation; rebuild it as a plain 200. */
 function unredirect(response) {
   if (!response || !response.redirected) return response;
-  return response
-    .blob()
-    .then(
-      (body) =>
-        new Response(body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-        }),
-    );
+  return response.blob().then(
+    (body) =>
+      new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      }),
+  );
 }
 
 async function handleNavigation(request) {

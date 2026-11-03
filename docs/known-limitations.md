@@ -57,8 +57,9 @@ JSON backup on one device and restore it on the other.
 - Each metric is shown in one unit at a time (the one chosen in Settings). There is no
   side-by-side display of two units.
 - Glucose mg/dL ⇄ mmol/L uses the factor **18.0156** and is for **display only**. Stored
-  records always keep the value and unit as entered. Thresholds are entered in the metric's
-  current unit.
+  records always keep the value and unit as entered. Clinician thresholds keep the unit they
+  were entered in (`thresholdUnit`) and are never converted; readings are converted to that unit
+  for comparison, and the chart's target band is converted for display only.
 - The set of units is a closed list (`UNITS` in `src/domain/types.ts`): mg/dL, mmol/L, mmHg, kg,
   lb. Pulse uses a fixed "bpm" label on its field rather than a `Unit`.
 
@@ -105,13 +106,39 @@ Sugar Daddy has **not** been tested on physical phones. Automated end-to-end tes
 Playwright emulation only:
 
 - `Pixel 7` device profile in Chromium (Android-sized viewport).
-- `iPhone 14` device profile in WebKit. WebKit emulation on a desktop is **not** iOS Safari:
-  it does not reproduce Home Screen installation, iOS storage eviction or iOS notification
-  behaviour.
+- `iPhone 14` device profile (viewport, pixel ratio, touch, user agent) in **Chromium**
+  (`iphone-viewport-chromium`). The `iphone-webkit` project is configured but **could not run on
+  the build machine** (WebKit needs the system library `libmanette-0.2-0`, which requires sudo to
+  install). So no WebKit/Safari engine behaviour was tested at all. Even WebKit emulation would
+  not be iOS Safari: it does not reproduce Home Screen installation, iOS storage eviction or iOS
+  notification behaviour.
 
 Installation, screen readers (VoiceOver, TalkBack), 200% text zoom, dark mode and reduced
 motion on real devices are listed as manual checks in `docs/test-plan.md` and have not yet been
 performed.
+
+## Reminders near midnight
+
+Only today's slots are evaluated. A late-evening reminder (e.g. 23:30 with a 60-minute grace)
+never turns into "missed" after midnight; it simply disappears with the new day. Slots can be
+marked "Not needed" only once they are missed, not in advance.
+
+## Hosting caveats not verified on a live host
+
+The service worker serves the cached `/` as the app shell and rebuilds redirected responses, to
+cope with hosts that redirect `/index.html` → `/` (Cloudflare Pages, Netlify pretty URLs). This
+was reasoned about and tested against `vite preview` only, not against those hosts. After
+deploying, open the app, go offline, and reload once to confirm.
+
+## Updates
+
+Every production build gets a new build id, so even an unchanged rebuild shows "Update
+available" once on installed copies.
+
+## Backup import trust
+
+Imported backups are validated strictly (format, version, types, units, value limits, IDs,
+references), but the stored `raw` text is not cross-checked against the numeric `value`.
 
 ## Dependency audit
 

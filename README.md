@@ -42,18 +42,19 @@ offline, and keeps every record on the device.
 
 Run these from the project folder.
 
-| Command                | What it does                                                                                        |
-| ---------------------- | --------------------------------------------------------------------------------------------------- |
-| `npm install`          | Install dependencies.                                                                               |
-| `npm run dev`          | Start the development server (Vite). The service worker is not registered in dev mode.              |
-| `npm test`             | Run unit and integration tests (Vitest, with `TZ=America/New_York`).                                |
-| `npm run e2e`          | Run end-to-end tests (Playwright). Serves the production build with `vite preview`, so build first. |
-| `npm run lint`         | ESLint.                                                                                             |
-| `npm run typecheck`    | TypeScript type check (`tsc --noEmit`).                                                             |
-| `npm run format:check` | Check formatting with Prettier (`npm run format` fixes it).                                         |
-| `npm run build`        | Type check, build into `dist/`, then run `scripts/verify-pwa.mjs` on the output.                    |
-| `npm run preview`      | Serve `dist/` at <http://localhost:4173>.                                                           |
-| `npm run check`        | All gates in order: format check, lint, typecheck, tests, build, e2e.                               |
+| Command                | What it does                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install`          | Install dependencies.                                                                                                                 |
+| `npm run dev`          | Start the development server (Vite). The service worker is not registered in dev mode.                                                |
+| `npm test`             | Run unit and integration tests (Vitest, with `TZ=America/New_York`).                                                                  |
+| `npm run e2e`          | Run end-to-end tests (Playwright) on all projects, including WebKit. Serves the production build with `vite preview`, so build first. |
+| `npm run e2e:chromium` | Same, Chromium projects only (Pixel 7 and iPhone 14 viewports). Use this where WebKit can't launch.                                   |
+| `npm run lint`         | ESLint.                                                                                                                               |
+| `npm run typecheck`    | TypeScript type check (`tsc --noEmit`).                                                                                               |
+| `npm run format:check` | Check formatting with Prettier (`npm run format` fixes it).                                                                           |
+| `npm run build`        | Type check, build into `dist/`, then run `scripts/verify-pwa.mjs` on the output.                                                      |
+| `npm run preview`      | Serve `dist/` at <http://localhost:4173>.                                                                                             |
+| `npm run check`        | All gates in order: format check, lint, typecheck, tests, build, e2e (Chromium projects).                                             |
 
 Before running `npm run e2e` for the first time, install the browsers:
 
@@ -247,4 +248,35 @@ tested deterministically. See [docs/test-plan.md](docs/test-plan.md).
 
 ## Verification status
 
-Recorded by the final implementation report.
+Recorded 2026-11-03 on Linux (Node 26.3.0), from a fresh `npm run check` (exit 0):
+
+| Gate                               | Result                                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `prettier --check`                 | All files formatted                                                                              |
+| `eslint .`                         | 0 problems                                                                                       |
+| `tsc --noEmit` (strict)            | 0 errors                                                                                         |
+| Unit + integration (`npm test`)    | 21 files, **523 tests passed**                                                                   |
+| Production build (`npm run build`) | Built to `dist/` (~80 kB JS, 27 kB gzipped); `verify-pwa`: 21/21 checks passed                   |
+| E2E `android-chromium` (Pixel 7)   | 10/10 passed                                                                                     |
+| E2E `iphone-viewport-chromium`     | 10/10 passed                                                                                     |
+| E2E `iphone-webkit`                | **Not run** — WebKit cannot launch on the build machine (missing `libmanette-0.2-0`, needs sudo) |
+| `npm audit --omit=dev`             | 0 vulnerabilities (dev-only: 11 moderate in ESLint's `minimatch`)                                |
+
+E2E covers the full patient workflow (launch → log without a note, timed well under 10 s → Today
+and History → edit → delete with confirmation → CSV and JSON export → restore with preview and
+merge → reminders and the missed indicator on a fixed clock → offline reload and offline
+logging), plus manifest, icon sizes, service-worker activation, no console errors and no
+requests to other origins.
+
+**Not verified:** installation and use on physical Android and iOS devices, iOS Safari/WebKit
+behaviour, screen readers (TalkBack/VoiceOver), and deployment to a real HTTPS host. See
+`docs/known-limitations.md` and the manual checklist in `docs/test-plan.md`.
+
+### How it was built
+
+The Superpowers skills used were `brainstorming` (requirements and the two operator questions),
+`writing-plans` (`docs/implementation-plan.md`), `test-driven-development` (each module was
+written test-first, with parallel subagents on separate files), `systematic-debugging` (root
+causes for the offline cache miss, test races and copy defects), `requesting-code-review` (an
+independent review; all critical and important findings were fixed, see git history) and
+`verification-before-completion` (this record).

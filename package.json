@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Sugar Daddy — Your glucose. Your rules. A private, offline-first PWA for logging glucose.",
+  "description": "Sugar Daddy \u2014 Your glucose. Your rules. A private, offline-first PWA for logging glucose.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node scripts/verify-pwa.mjs",
@@ -16,7 +16,8 @@
     "test:watch": "TZ=America/New_York vitest",
     "e2e": "playwright test",
     "verify-pwa": "node scripts/verify-pwa.mjs",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run e2e"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run e2e:chromium",
+    "e2e:chromium": "playwright test --project=android-chromium --project=iphone-viewport-chromium"
   },
   "dependencies": {
     "preact": "^10.29.8"
