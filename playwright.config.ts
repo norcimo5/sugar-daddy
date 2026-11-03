@@ -15,5 +15,11 @@ export default defineConfig({
   projects: [
     { name: 'android-chromium', use: { ...devices['Pixel 7'] } },
     { name: 'iphone-webkit', use: { ...devices['iPhone 14'] } },
+    // iPhone-sized viewport in Chromium, for hosts where WebKit cannot launch
+    // (e.g. missing libmanette). Same viewport/DPR/UA/touch as iPhone 14; not real Safari.
+    {
+      name: 'iphone-viewport-chromium',
+      use: { ...devices['iPhone 14'], browserName: 'chromium', defaultBrowserType: 'chromium' },
+    },
   ],
 });

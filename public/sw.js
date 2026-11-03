@@ -53,7 +53,11 @@ async function handleNavigation(request) {
 }
 
 async function handleAsset(request) {
-  const cached = await caches.match(request, { cacheName: CACHE_NAME });
+  // ignoreVary: servers may send `Vary: Origin`. Precache (cache.addAll) stores responses
+  // fetched without an Origin header, while <script type=module crossorigin> and
+  // <link crossorigin> requests carry one, so a Vary-respecting match misses and the asset
+  // falls through to the network — which fails offline. Same-origin only, so this is safe.
+  const cached = await caches.match(request, { cacheName: CACHE_NAME, ignoreVary: true });
   if (cached) return cached;
   return fromNetworkAndCache(request);
 }
