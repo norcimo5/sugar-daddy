@@ -5,6 +5,7 @@
   --text: #2b1a22;
   --text-muted: #6a5560;
   --border: #e3cfc6;
+  --field-border: #8f7a84;
   --primary: #7a2e4f;
   --primary-strong: #5e2039;
   --on-primary: #ffffff;
@@ -34,6 +35,7 @@
     --text: #f6ece6;
     --text-muted: #c9b6bd;
     --border: #4a3740;
+    --field-border: #8c7580;
     --primary: #f2a7c6;
     --primary-strong: #f7c3d8;
     --on-primary: #2b0f1c;
@@ -271,7 +273,7 @@ textarea {
   font: inherit;
   color: var(--text);
   background: var(--surface);
-  border: 2px solid var(--border);
+  border: 2px solid var(--field-border);
   border-radius: 12px;
   padding: 10px 12px;
   min-height: 48px;

@@ -68,9 +68,14 @@ export function Chart(props: {
       })),
   }));
   const primaryThresholds = config?.thresholds[def.primaryField];
+  const tUnit = config?.thresholdUnit ?? unit;
   const band =
     primaryThresholds?.targetLow !== undefined && primaryThresholds?.targetHigh !== undefined
-      ? { low: primaryThresholds.targetLow, high: primaryThresholds.targetHigh }
+      ? {
+          // Display-only conversion of the band; stored thresholds are never rewritten.
+          low: convertValue(primaryThresholds.targetLow, tUnit, unit),
+          high: convertValue(primaryThresholds.targetHigh, tUnit, unit),
+        }
       : null;
   const model = buildChartModel({
     start: props.range.start,

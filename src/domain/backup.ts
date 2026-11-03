@@ -1,6 +1,8 @@
 /**
  * JSON backup and restore (FR-E4, FR-E5). Pure: builds backup files, strictly validates
  * untrusted backup text, and plans a merge/replace restore without touching storage.
+ * Parsed timestamps are normalised to UTC `toISOString()` form (so offset instants such as
+ * '2026-06-15T02:00:00-05:00' become '2026-06-15T07:00:00.000Z' and sort correctly as text).
  */
 import {
   GRACE_MAX,
@@ -115,6 +117,11 @@ function isIsoInstant(v: unknown): v is string {
   return Number.isFinite(Date.parse(v));
 }
 
+/** Canonical UTC form, so stored timestamps compare correctly as strings. */
+function toUtc(v: string): string {
+  return new Date(v).toISOString();
+}
+
 function isLocalDate(v: unknown): v is string {
   if (typeof v !== 'string') return false;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
@@ -164,7 +171,7 @@ function validateSettings(v: unknown): Settings {
     notificationsEnabled: v.notificationsEnabled,
     firstRunDone: v.firstRunDone,
   };
-  if (v.lastBackupAt !== undefined) s.lastBackupAt = v.lastBackupAt as string;
+  if (v.lastBackupAt !== undefined) s.lastBackupAt = toUtc(v.lastBackupAt as string);
   return s;
 }
 
@@ -190,6 +197,11 @@ function validateMeasurement(v: unknown, n: number, registry: MetricRegistry): M
   for (const [k, x] of Object.entries(v.value)) {
     if (!fieldKeys.has(k)) fail(`${at} has a value "${k}" that ${def.name} does not have.`);
     if (!isFiniteNumber(x)) fail(`${at} has a value "${k}" that is not a valid number.`);
+    const field = def.fields.find((f) => f.key === k);
+    const limits = field?.limits(v.unit);
+    if (limits && (x < limits.min || x > limits.max)) {
+      fail(`${at} has a value outside the allowed range.`);
+    }
     value[k] = x;
   }
   const raw: Record<string, string> = {};
@@ -209,11 +221,11 @@ function validateMeasurement(v: unknown, n: number, registry: MetricRegistry): M
     value,
     raw,
     unit: v.unit,
-    takenAt: v.takenAt as string,
+    takenAt: toUtc(v.takenAt as string),
     timeZone: v.timeZone,
     source: v.source,
-    createdAt: v.createdAt as string,
-    updatedAt: v.updatedAt as string,
+    createdAt: toUtc(v.createdAt as string),
+    updatedAt: toUtc(v.updatedAt as string),
   };
   if (v.note !== undefined) m.note = v.note;
   return m;
@@ -236,19 +248,20 @@ function validateReminder(v: unknown, n: number, registry: MetricRegistry): Remi
     time: v.time,
     metricId: v.metricId,
     enabled: v.enabled,
-    createdAt: v.createdAt as string,
-    updatedAt: v.updatedAt as string,
+    createdAt: toUtc(v.createdAt as string),
+    updatedAt: toUtc(v.updatedAt as string),
   };
 }
 
-function validateDismissal(v: unknown, n: number): Dismissal {
+function validateDismissal(v: unknown, n: number, reminderIds: ReadonlySet<string>): Dismissal {
   const at = `Dismissal ${n}`;
   if (!isObj(v)) fail(`${at} is not a valid record.`);
   if (!isNonEmptyString(v.reminderId)) fail(`${at} is missing its reminder.`);
   if (!isLocalDate(v.date)) fail(`${at} has an invalid date.`);
   if (!isIsoInstant(v.createdAt)) fail(`${at} has an invalid date.`);
   if (v.id !== `${v.reminderId}@${v.date}`) fail(`${at} has an invalid ID.`);
-  return { id: v.id, reminderId: v.reminderId, date: v.date, createdAt: v.createdAt };
+  if (!reminderIds.has(v.reminderId)) fail(`${at} refers to a reminder that is not in the backup.`);
+  return { id: v.id, reminderId: v.reminderId, date: v.date, createdAt: toUtc(v.createdAt) };
 }
 
 function validateMetricConfig(v: unknown, n: number, registry: MetricRegistry): MetricConfig {
@@ -259,6 +272,9 @@ function validateMetricConfig(v: unknown, n: number, registry: MetricRegistry): 
   if (!def) fail(`${at} uses an unknown metric ("${v.metricId}").`);
   if (typeof v.enabled !== 'boolean') fail(`${at} has an invalid on/off value.`);
   if (!isUnitFor(v.unit, def)) fail(`${at} has an invalid unit.`);
+  if ('thresholdUnit' in v && !isUnitFor(v.thresholdUnit, def)) {
+    fail(`${at} has an invalid target range unit.`);
+  }
   if (!isIsoInstant(v.createdAt) || !isIsoInstant(v.updatedAt)) fail(`${at} has an invalid date.`);
   if (!isObj(v.thresholds)) fail(`${at} has missing or damaged target ranges.`);
   const fieldKeys = new Set(def.fields.map((f) => f.key));
@@ -279,14 +295,16 @@ function validateMetricConfig(v: unknown, n: number, registry: MetricRegistry): 
     }
     thresholds[k] = out;
   }
-  return {
+  const config: MetricConfig = {
     metricId: v.metricId,
     enabled: v.enabled,
     unit: v.unit,
     thresholds,
-    createdAt: v.createdAt as string,
-    updatedAt: v.updatedAt as string,
+    createdAt: toUtc(v.createdAt as string),
+    updatedAt: toUtc(v.updatedAt as string),
   };
+  if (isUnitFor(v.thresholdUnit, def)) config.thresholdUnit = v.thresholdUnit;
+  return config;
 }
 
 function validateList<T>(
@@ -339,10 +357,11 @@ function validateBackup(parsed: unknown, registry: MetricRegistry): BackupFile {
     (r) => r.id,
     'has the same ID as an earlier reminder.',
   );
+  const reminderIds = new Set(reminders.map((r) => r.id));
   const dismissals = validateList(
     requireArray(data, 'dismissals', 'dismissals'),
     'Dismissal',
-    validateDismissal,
+    (v, n) => validateDismissal(v, n, reminderIds),
     (d) => d.id,
     'has the same ID as an earlier dismissal.',
   );
@@ -357,7 +376,7 @@ function validateBackup(parsed: unknown, registry: MetricRegistry): BackupFile {
   return {
     format: BACKUP_FORMAT,
     version,
-    exportedAt: parsed.exportedAt as string,
+    exportedAt: toUtc(parsed.exportedAt as string),
     app: { name: app.name, version: app.version },
     data: { settings, metricConfigs, reminders, dismissals, measurements },
   };

@@ -10,7 +10,7 @@ import {
 const STATUS_TEXT: Record<NotificationSupport, string> = {
   unsupported: 'This browser does not support notifications.',
   default: 'Not turned on.',
-  granted: 'Allowed.',
+  granted: 'Off. (Your browser allows notifications.)',
   denied: 'Blocked in your browser or phone settings.',
 };
 
@@ -20,13 +20,17 @@ export function NotificationSettings() {
   const on = app.settings.notificationsEnabled && support === 'granted';
 
   async function enable() {
-    const result = await requestNotificationPermission();
-    setSupport(result);
-    if (result === 'granted') {
-      await app.actions.saveSettings({ notificationsEnabled: true });
-      app.toast('Notifications turned on.');
-    } else {
-      app.toast('Notifications were not allowed.', 'error');
+    try {
+      const result = await requestNotificationPermission();
+      setSupport(result);
+      if (result === 'granted') {
+        await app.actions.saveSettings({ notificationsEnabled: true });
+        app.toast('Notifications turned on.');
+      } else {
+        app.toast('Notifications were not allowed.', 'error');
+      }
+    } catch (e) {
+      app.toast(e instanceof Error ? e.message : 'Not saved.', 'error');
     }
   }
 
@@ -62,8 +66,12 @@ export function NotificationSettings() {
           <button
             type="button"
             onClick={async () => {
-              await app.actions.saveSettings({ notificationsEnabled: false });
-              app.toast('Notifications turned off.');
+              try {
+                await app.actions.saveSettings({ notificationsEnabled: false });
+                app.toast('Notifications turned off.');
+              } catch (e) {
+                app.toast(e instanceof Error ? e.message : 'Not saved.', 'error');
+              }
             }}
           >
             Turn off

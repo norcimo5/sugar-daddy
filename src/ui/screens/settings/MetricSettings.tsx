@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import type { MetricConfig, MetricDefinition, Thresholds, Unit } from '../../../domain/types';
 import { useApp } from '../../context';
 import { unitLabel } from '../../../domain/metrics';
-import { convertThresholds, validateThresholds } from '../../../domain/thresholds';
+import { validateThresholds } from '../../../domain/thresholds';
 import { parseNumber } from '../../../domain/validation';
 
 const KEYS: { key: keyof Thresholds; label: string }[] = [
@@ -32,9 +32,12 @@ export function MetricSettings({ def, config }: { def: MetricDefinition; config:
   const app = useApp();
   const [draft, setDraft] = useState<Draft>(() => toDraft(def, config));
   const [error, setError] = useState<string | null>(null);
-  const isPrimary = def.id === 'glucose';
+  const isPrimary = Boolean(def.primary);
   const uLabel = unitLabel(def, config.unit);
   const hasAny = Object.values(config.thresholds).some((t) => Object.keys(t).length > 0);
+  // Unit the threshold form is in: the unit existing values were entered in, else the current unit.
+  const thresholdUnit: Unit = hasAny ? (config.thresholdUnit ?? config.unit) : config.unit;
+  const tLabel = unitLabel(def, thresholdUnit);
 
   async function save(next: MetricConfig, message: string) {
     try {
@@ -53,13 +56,13 @@ export function MetricSettings({ def, config }: { def: MetricDefinition; config:
   }
 
   async function onUnit(unit: Unit) {
-    const thresholds: Record<string, Thresholds> = {};
-    for (const [field, t] of Object.entries(config.thresholds)) {
-      const fd = def.fields.find((f) => f.key === field);
-      thresholds[field] = fd?.unitLabel ? t : convertThresholds(t, config.unit, unit);
-    }
-    const next = { ...config, unit, thresholds };
-    setDraft(toDraft(def, next));
+    // Thresholds are never converted: they stay exactly as the clinician gave them, in the unit
+    // they were entered in (thresholdUnit). Readings are converted for evaluation instead.
+    const next: MetricConfig = {
+      ...config,
+      unit,
+      thresholdUnit: hasAny ? thresholdUnit : undefined,
+    };
     await save(next, `${def.name} unit set to ${unitLabel(def, unit)}.`);
   }
 
@@ -88,7 +91,11 @@ export function MetricSettings({ def, config }: { def: MetricDefinition; config:
       if (Object.keys(t).length) thresholds[field] = t;
     }
     setError(null);
-    await save({ ...config, thresholds }, 'Clinician values saved.');
+    const any = Object.keys(thresholds).length > 0;
+    await save(
+      { ...config, thresholds, thresholdUnit: any ? thresholdUnit : undefined },
+      'Clinician values saved.',
+    );
   }
 
   return (
@@ -135,8 +142,11 @@ export function MetricSettings({ def, config }: { def: MetricDefinition; config:
               <span class="muted">({hasAny ? 'configured' : 'not configured'})</span>
             </summary>
             <p class="hint">
-              Enter only values your clinician has given you, in {uLabel}. Leave blank if you don't
+              Enter only values your clinician has given you, in {tLabel}. Leave blank if you don't
               have them. Sugar Daddy never guesses these.
+              {hasAny && thresholdUnit !== config.unit
+                ? ` These were entered in ${tLabel} and are kept exactly as entered; readings are converted to compare.`
+                : ''}
             </p>
             <form onSubmit={onSaveThresholds} noValidate>
               {def.thresholdFields.map((field) => (
@@ -178,7 +188,7 @@ export function MetricSettings({ def, config }: { def: MetricDefinition; config:
                 </div>
               ) : null}
               <button type="submit" class="btn btn-primary btn-block">
-                Save {def.shortName} values
+                Save {def.name.toLowerCase()} values
               </button>
             </form>
           </details>

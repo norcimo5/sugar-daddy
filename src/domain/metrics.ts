@@ -40,6 +40,7 @@ const valueField = (limits: FieldDef['limits']): FieldDef => ({
 
 export const GLUCOSE: MetricDefinition = {
   id: 'glucose',
+  primary: true,
   name: 'Glucose',
   shortName: 'Glucose',
   logLabel: 'Log glucose',
@@ -154,6 +155,14 @@ export function createMetricRegistry(defs: readonly MetricDefinition[]): MetricR
 }
 
 export const metricRegistry: MetricRegistry = createMetricRegistry(BUILTIN_METRICS);
+
+/** The headline metric (shown first on Today, always enabled). */
+export function primaryMetric(registry: MetricRegistry): MetricDefinition {
+  const all = registry.all();
+  const found = all.find((d) => d.primary) ?? all[0];
+  if (!found) throw new Error('No metrics are registered.');
+  return found;
+}
 
 export function defaultMetricConfig(def: MetricDefinition, nowIso: string): MetricConfig {
   return {

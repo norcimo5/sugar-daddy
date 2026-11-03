@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
 import type { Measurement, MetricDefinition } from '../../domain/types';
 import { useApp } from '../context';
-import { unitLabel } from '../../domain/metrics';
+import { primaryMetric, unitLabel } from '../../domain/metrics';
 import { evaluateStatus } from '../../domain/thresholds';
 import { savedMessage } from '../../domain/copy';
 import {
@@ -11,16 +11,20 @@ import {
   toLocalInputValue,
 } from '../../domain/time';
 import { createSubmitGuard } from '../../app/submitGuard';
+import { previousRoute } from '../router';
 
 function goBack(fallback: string, navigate: (r: string) => void) {
-  if (history.length > 1) history.back();
-  else navigate(fallback);
+  const prev = previousRoute();
+  // Never return to the screen being left (e.g. after deleting the reading it showed).
+  navigate(prev && prev !== location.hash && !prev.startsWith('#/log') ? prev : fallback);
 }
 
 export function LogEntry(props: { metricId?: string; editId?: string }) {
   const app = useApp();
   const existing = props.editId ? app.measurements.find((m) => m.id === props.editId) : undefined;
-  const def = app.registry.get(existing?.metricId ?? props.metricId ?? 'glucose');
+  const def = app.registry.get(
+    existing?.metricId ?? (props.metricId || primaryMetric(app.registry).id),
+  );
 
   if (props.editId && !existing) {
     return (
@@ -57,23 +61,29 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [showTime, setShowTime] = useState(false);
-  const [takenAtLocal, setTakenAtLocal] = useState(() =>
+  const [initialTakenAtLocal] = useState(() =>
     existing ? toLocalInputValue(new Date(existing.takenAt)) : '',
   );
+  const [takenAtLocal, setTakenAtLocal] = useState(initialTakenAtLocal);
+  const [deleting, setDeleting] = useState(false);
   const [showNote, setShowNote] = useState(Boolean(existing?.note));
   const [note, setNote] = useState(existing?.note ?? '');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const firstRef = useRef<HTMLInputElement>(null);
 
-  const title = existing ? `Edit ${def.shortName} reading` : def.logLabel;
+  const title = existing ? `Edit ${def.name.toLowerCase()} reading` : def.logLabel;
   const uLabel = unitLabel(def, unit);
 
   async function onSubmit(e: Event) {
     e.preventDefault();
+    if (guard.busy) return; // a save is already in flight (rapid repeated taps)
     setSaveError(null);
     let takenAt: string;
-    if (takenAtLocal) {
+    if (existing && takenAtLocal === initialTakenAtLocal) {
+      // Time not touched: keep the stored instant exactly (seconds and all).
+      takenAt = existing.takenAt;
+    } else if (takenAtLocal) {
       const d = fromLocalInputValue(takenAtLocal);
       if (!d) {
         setErrors({ takenAt: 'Enter a valid date and time.' });
@@ -93,7 +103,7 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
             unit,
             takenAt,
             timeZone: existing?.timeZone ?? currentTimeZone(),
-            note: showNote ? note : existing?.note ? '' : undefined,
+            note: showNote ? note : existing?.note,
           },
           existing,
         ),
@@ -121,13 +131,15 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
   }
 
   async function onDelete() {
-    if (!existing) return;
+    if (!existing || deleting) return;
+    setDeleting(true);
     try {
       await app.actions.deleteMeasurement(existing.id);
       app.toast('Reading deleted.');
       goBack('/history', app.navigate);
     } catch (err) {
       app.toast(err instanceof Error ? err.message : 'Could not delete.', 'error');
+      setDeleting(false);
     }
   }
 
@@ -272,7 +284,13 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
                 <strong>Delete this reading?</strong> This cannot be undone.
               </p>
               <div class="btn-row">
-                <button type="button" class="btn btn-danger" onClick={onDelete} autoFocus>
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  onClick={onDelete}
+                  disabled={deleting}
+                  autoFocus
+                >
                   Yes, delete
                 </button>
                 <button type="button" onClick={() => setConfirmDelete(false)}>

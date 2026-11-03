@@ -9,6 +9,7 @@ import {
   defaultMetricConfig,
   formatMeasurementValue,
   metricRegistry,
+  primaryMetric,
   unitLabel,
 } from './metrics';
 import { buildMeasurement } from './measurement';
@@ -269,5 +270,18 @@ describe('extensibility: TEST-ONLY fixture metric', () => {
     expect(evaluateStatus(def, defaultMetricConfig(def, now.toISOString()), r.value)).toBe(
       'unconfigured',
     );
+  });
+});
+
+describe('primaryMetric', () => {
+  it('returns the definition flagged primary (glucose for the built-ins)', () => {
+    expect(primaryMetric(metricRegistry).id).toBe('glucose');
+  });
+  it('falls back to the first metric by order when none is flagged', () => {
+    const reg = createMetricRegistry([
+      { ...KETONES, primary: false },
+      { ...WEIGHT, primary: false },
+    ]);
+    expect(primaryMetric(reg).id).toBe(WEIGHT.order < KETONES.order ? WEIGHT.id : KETONES.id);
   });
 });

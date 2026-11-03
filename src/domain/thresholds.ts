@@ -64,7 +64,7 @@ function classify(v: number, t: Thresholds): StatusKind {
 }
 
 /**
- * Status of a measurement against clinician thresholds in `config` (stored in `config.unit`).
+ * Status of a measurement against clinician thresholds in `config` (stored in `config.thresholdUnit ?? config.unit`).
  * Evaluates every `def.thresholdFields` entry that has thresholds and a value; returns the most
  * severe result. With no configured thresholds at all → 'unconfigured'.
  */
@@ -78,7 +78,7 @@ export function evaluateStatus(
     const t = config.thresholds[key];
     const raw = m.value[key];
     if (!hasAny(t) || raw === undefined) continue;
-    const v = convertValue(raw, m.unit, config.unit);
+    const v = convertValue(raw, m.unit, config.thresholdUnit ?? config.unit);
     const kind = classify(v, t);
     if (SEVERITY[kind] > SEVERITY[worst]) worst = kind;
   }

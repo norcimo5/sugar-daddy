@@ -40,6 +40,8 @@ export interface MetricDefinition {
   thresholdFields: readonly string[];
   defaultEnabled: boolean;
   order: number;
+  /** The headline metric shown first on Today (exactly one: glucose). */
+  primary?: boolean;
 }
 
 export interface MetricRegistry {
@@ -62,6 +64,12 @@ export interface MetricConfig {
   unit: Unit;
   /** Keyed by field key. */
   thresholds: Record<string, Thresholds>;
+  /**
+   * Unit the clinician thresholds were entered in. Thresholds are never converted when the
+   * display unit changes; readings are converted to this unit for evaluation instead.
+   * Absent (older data) → thresholds are in `unit`.
+   */
+  thresholdUnit?: Unit;
   createdAt: string;
   updatedAt: string;
 }

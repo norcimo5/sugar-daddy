@@ -3,9 +3,18 @@
  *
  * Status precedence for a slot: satisfied > dismissed > (upcoming | due | missed by time).
  *
- * Satisfaction is deliberately simple: any reading of the same metric with takenAt in
- * [dueAt − SATISFY_LOOKBACK_MINUTES, graceEndsAt] satisfies the slot, so one reading may
- * satisfy two close slots (e.g. 08:00 and 09:00 both satisfied by an 08:30 reading).
+ * Satisfaction: any reading of the same metric with takenAt in [from, windowEnd] satisfies the
+ * slot, where from = dueAt − SATISFY_LOOKBACK_MINUTES and windowEnd is the later of
+ *   - graceEndsAt (inclusive), and
+ *   - the lookback start (dueAt − SATISFY_LOOKBACK_MINUTES) of the next enabled same-metric slot
+ *     today (exclusive), or, when there is no later same-metric slot today, the end of the local
+ *     day (next local midnight, exclusive).
+ * So a reading logged after a slot was missed ("Log now" from the missed banner) clears it, as
+ * long as it is not already inside the next slot's lookback. Windows of successive slots mostly
+ * do not overlap, but when slots are close they still can, and one reading may then satisfy both
+ * (e.g. 08:00 and 09:00 both satisfied by an 08:30 reading).
+ *
+ * The due → missed transition is unaffected: a slot is missed once now > graceEndsAt.
  *
  * DST: dueAt is built from local wall-clock fields with `new Date(y, m, d, h, mi)`. A time that
  * does not exist on spring-forward day (e.g. 02:30) is normalised by Date (to 03:30 local
@@ -81,11 +90,27 @@ export function evaluateReminders(args: {
     .filter((r) => !Number.isNaN(r.t))
     .sort((a, b) => a.t - b.t);
 
-  const todaySlots: SlotState[] = timed.map(({ reminder, hm }) => {
-    const { dueAt, graceEndsAt } = slotTimes(today, hm, graceMinutes);
-    const from = dueAt.getTime() - SATISFY_LOOKBACK_MINUTES * MINUTE_MS;
+  const lookbackMs = SATISFY_LOOKBACK_MINUTES * MINUTE_MS;
+  const endOfDayMs = startOfLocalDay(addLocalDays(today, 1)).getTime();
+  const dueTimes = timed.map(({ reminder, hm }) => ({
+    reminder,
+    ...slotTimes(today, hm, graceMinutes),
+  }));
+
+  const todaySlots: SlotState[] = dueTimes.map(({ reminder, dueAt, graceEndsAt }) => {
+    const dueMs = dueAt.getTime();
+    const from = dueMs - lookbackMs;
     const to = graceEndsAt.getTime();
-    const hit = readings.find((r) => r.metricId === reminder.metricId && r.t >= from && r.t <= to);
+    let softEnd = endOfDayMs; // exclusive
+    for (const other of dueTimes) {
+      const otherDue = other.dueAt.getTime();
+      if (other.reminder.metricId === reminder.metricId && otherDue > dueMs) {
+        softEnd = Math.min(softEnd, otherDue - lookbackMs);
+      }
+    }
+    const hit = readings.find(
+      (r) => r.metricId === reminder.metricId && r.t >= from && (r.t <= to || r.t < softEnd),
+    );
     const base = { reminder, date: todayKey, dueAt, graceEndsAt };
     if (hit) return { ...base, status: 'satisfied', satisfiedBy: hit.id };
     if (dismissed.has(dismissalId(reminder.id, todayKey))) return { ...base, status: 'dismissed' };

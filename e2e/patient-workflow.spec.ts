@@ -48,7 +48,7 @@ test.describe('patient workflow', () => {
       .getByTestId('today-list')
       .getByRole('button', { name: row('123') })
       .click();
-    await expect(page.getByRole('heading', { name: 'Edit Glucose reading' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Edit glucose reading' })).toBeVisible();
     const input = page.getByLabel(/^Glucose in /);
     await expect(input).toHaveValue('123');
     await input.fill('131');
@@ -282,7 +282,7 @@ test.describe('accessibility basics', () => {
     // Configure a clinician target range: 70–180 mg/dL.
     await glucose.getByLabel('Target range — low').fill('70');
     await glucose.getByLabel('Target range — high').fill('180');
-    await glucose.getByRole('button', { name: 'Save Glucose values' }).click();
+    await glucose.getByRole('button', { name: 'Save glucose values' }).click();
     await expect(page.getByTestId('toast')).toContainText('Clinician values saved.');
 
     // A high reading shows its status as text, with plain (not playful) copy.

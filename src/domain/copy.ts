@@ -1,6 +1,6 @@
 /**
  * User-facing copy. Playful lines appear only in low-stakes places (welcome, empty states,
- * success for non-concerning readings) and only when the playful tone is on. Concerning
+ * success for in-range readings) and only when the playful tone is on. Concerning
  * statuses always get calm, plain wording.
  */
 import type { StatusKind, Tone } from './types';
@@ -15,16 +15,14 @@ export const CARE_TEAM_NOTE =
 
 const SAVED = 'Reading saved.';
 
+/**
+ * Playful only for an in-range reading. 'unconfigured' stays plain: with no thresholds we
+ * cannot know the reading is not concerning.
+ */
 export function savedMessage(tone: Tone, status: StatusKind): string {
-  if (tone !== 'playful') return SAVED;
-  switch (status) {
-    case 'in_range':
-      return `${SAVED} Daddy says you're looking good.`;
-    case 'unconfigured':
-      return `${SAVED} Sweet and simple.`;
-    default:
-      return SAVED;
-  }
+  if (tone === 'playful' && status === 'in_range')
+    return `${SAVED} Daddy says you're looking good.`;
+  return SAVED;
 }
 
 export function welcomeMessage(tone: Tone): string {

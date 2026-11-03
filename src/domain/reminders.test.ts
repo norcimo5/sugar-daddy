@@ -186,10 +186,15 @@ describe('evaluateReminders: satisfaction', () => {
     expect(s.status).toBe('satisfied');
   });
 
-  it('not satisfied by a reading 1 ms after graceEndsAt', () => {
+  it('not satisfied by a reading 1 ms after graceEndsAt when the next slot lookback starts earlier', () => {
+    // Next glucose slot at 10:00 → its lookback starts 08:00, before 08:00's grace end (09:00),
+    // so the 08:00 window ends at graceEndsAt; the 09:00:00.001 reading belongs to 10:00.
     const t = new Date(local(2026, 11, 3, 9, 0).getTime() + 1);
-    const s = only(evaluate(later, [r1], [reading('m1', t)]).today);
-    expect(s.status).toBe('missed');
+    const res = evaluate(later, [r1, reminder('r2', '10:00')], [reading('m1', t)]);
+    expect(res.today.map((s) => [s.reminder.id, s.status])).toEqual([
+      ['r1', 'missed'],
+      ['r2', 'satisfied'],
+    ]);
   });
 
   it('not satisfied by a reading of a different metric', () => {
@@ -398,5 +403,107 @@ describe('evaluateReminders: DST', () => {
     const s = only(evaluate(local(2026, 11, 1, 0, 30), [reminder('r', '01:00')], [], [], 90).today);
     expect(s.dueAt.toISOString()).toBe('2026-11-01T05:00:00.000Z');
     expect(s.graceEndsAt.toISOString()).toBe('2026-11-01T06:30:00.000Z');
+  });
+});
+
+describe('evaluateReminders: logging after a missed reminder', () => {
+  const r9 = reminder('r9', '09:00');
+  const r14 = reminder('r14', '14:00');
+
+  it('a reading after grace but before the next slot lookback satisfies the missed slot', () => {
+    const res = evaluate(
+      local(2026, 11, 3, 11, 5),
+      [r9, r14],
+      [reading('m1', local(2026, 11, 3, 11, 0))],
+    );
+    expect(res.today.map((s) => [s.reminder.id, s.status, s.satisfiedBy])).toEqual([
+      ['r9', 'satisfied', 'm1'],
+      ['r14', 'upcoming', undefined],
+    ]);
+    expect(res.missed).toEqual([]);
+  });
+
+  it('a reading just before the next slot lookback still satisfies the missed slot', () => {
+    const t = new Date(local(2026, 11, 3, 12, 0).getTime() - 1);
+    const res = evaluate(local(2026, 11, 3, 12, 5), [r9, r14], [reading('m1', t)]);
+    expect(res.today.map((s) => [s.reminder.id, s.status])).toEqual([
+      ['r9', 'satisfied'],
+      ['r14', 'upcoming'],
+    ]);
+  });
+
+  it('a reading inside the next slot lookback belongs to it, not the missed slot', () => {
+    const res = evaluate(
+      local(2026, 11, 3, 12, 35),
+      [r9, r14],
+      [reading('m1', local(2026, 11, 3, 12, 30))],
+    );
+    expect(res.today.map((s) => [s.reminder.id, s.status])).toEqual([
+      ['r9', 'missed'],
+      ['r14', 'satisfied'],
+    ]);
+    expect(only(res.missed).reminder.id).toBe('r9');
+  });
+
+  it('a reading exactly at the next slot lookback start does not satisfy the earlier slot', () => {
+    const res = evaluate(
+      local(2026, 11, 3, 12, 5),
+      [r9, r14],
+      [reading('m1', local(2026, 11, 3, 12, 0))],
+    );
+    expect(res.today.map((s) => [s.reminder.id, s.status])).toEqual([
+      ['r9', 'missed'],
+      ['r14', 'satisfied'],
+    ]);
+  });
+
+  it('the last slot of the day is satisfied by a late-evening reading', () => {
+    const s = only(
+      evaluate(
+        local(2026, 11, 3, 23, 5),
+        [reminder('r20', '20:00')],
+        [reading('m1', local(2026, 11, 3, 23, 0))],
+      ).today,
+    );
+    expect(s.status).toBe('satisfied');
+  });
+
+  it('the last slot window ends at local midnight (exclusive)', () => {
+    const s = only(
+      evaluate(
+        local(2026, 11, 3, 23, 59),
+        [reminder('r20', '20:00')],
+        [reading('m1', local(2026, 11, 4, 0, 0))],
+      ).today,
+    );
+    expect(s.status).toBe('missed');
+  });
+
+  it('only same-metric slots bound the window', () => {
+    // A blood-pressure slot at 10:00 does not cut the glucose 09:00 window short.
+    const res = evaluate(
+      local(2026, 11, 3, 11, 5),
+      [r9, reminder('bp', '10:00', 'blood_pressure'), r14],
+      [reading('m1', local(2026, 11, 3, 11, 0))],
+    );
+    expect(res.today.find((s) => s.reminder.id === 'r9')?.status).toBe('satisfied');
+  });
+
+  it('disabled slots do not bound the window', () => {
+    const res = evaluate(
+      local(2026, 11, 3, 11, 5),
+      [r9, reminder('off', '10:00', 'glucose', false), r14],
+      [reading('m1', local(2026, 11, 3, 11, 0))],
+    );
+    expect(res.today.find((s) => s.reminder.id === 'r9')?.status).toBe('satisfied');
+  });
+
+  it('a later reading of a different metric does not clear the missed slot', () => {
+    const res = evaluate(
+      local(2026, 11, 3, 11, 5),
+      [r9, r14],
+      [reading('bp', local(2026, 11, 3, 11, 0), 'blood_pressure')],
+    );
+    expect(only(res.missed).reminder.id).toBe('r9');
   });
 });

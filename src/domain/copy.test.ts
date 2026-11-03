@@ -43,8 +43,8 @@ describe('savedMessage', () => {
       "Reading saved. Daddy says you're looking good.",
     );
   });
-  it('playful + unconfigured', () => {
-    expect(savedMessage('playful', 'unconfigured')).toBe('Reading saved. Sweet and simple.');
+  it('playful + unconfigured is plain (an unconfigured reading may still be concerning)', () => {
+    expect(savedMessage('playful', 'unconfigured')).toBe('Reading saved.');
   });
   it.each(STATUSES)('neutral + %s is plain', (status) => {
     expect(savedMessage('neutral', status)).toBe('Reading saved.');
@@ -57,12 +57,12 @@ describe('savedMessage', () => {
     });
   });
 
-  it('only non-concerning statuses ever get playful copy', () => {
+  it('playful copy appears only for playful + in_range (exhaustive over StatusKind × Tone)', () => {
     for (const tone of TONES) {
       for (const status of STATUSES) {
         const msg = savedMessage(tone, status);
-        if (tone === 'neutral' || CONCERNING.includes(status)) expect(msg).toBe('Reading saved.');
-        else expect(msg).not.toBe('Reading saved.');
+        if (tone === 'playful' && status === 'in_range') expect(msg).not.toBe('Reading saved.');
+        else expect(msg).toBe('Reading saved.');
       }
     }
   });

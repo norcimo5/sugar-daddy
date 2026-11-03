@@ -8,7 +8,10 @@ const BUILD_ID = 'dev';
 
 const CACHE_PREFIX = 'sugar-daddy-';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_ID}`;
-const APP_SHELL = '/index.html';
+// '/' rather than '/index.html': hosts with "pretty URLs" (Cloudflare Pages, Netlify) answer
+// /index.html with a redirect, and browsers refuse redirected responses for navigations.
+const APP_SHELL = '/';
+const APP_SHELL_FALLBACK = '/index.html';
 
 self.addEventListener('install', (event) => {
   // No automatic skipWaiting: the page asks via {type: 'SKIP_WAITING'} after the user agrees.
@@ -46,9 +49,26 @@ async function fromNetworkAndCache(request) {
   return response;
 }
 
+/** A redirected Response cannot answer a navigation; rebuild it as a plain 200. */
+function unredirect(response) {
+  if (!response || !response.redirected) return response;
+  return response
+    .blob()
+    .then(
+      (body) =>
+        new Response(body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        }),
+    );
+}
+
 async function handleNavigation(request) {
-  const cached = await caches.match(APP_SHELL, { cacheName: CACHE_NAME });
-  if (cached) return cached;
+  const opts = { cacheName: CACHE_NAME, ignoreVary: true };
+  const cached =
+    (await caches.match(APP_SHELL, opts)) || (await caches.match(APP_SHELL_FALLBACK, opts));
+  if (cached) return unredirect(cached);
   return fetch(request);
 }
 

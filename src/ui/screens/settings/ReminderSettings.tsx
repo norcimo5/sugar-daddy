@@ -4,6 +4,7 @@ import { GRACE_MAX, GRACE_MIN } from '../../../domain/types';
 import { parseHHMM } from '../../../domain/reminders';
 import { useApp } from '../../context';
 import { newId } from '../../../app/state';
+import { primaryMetric } from '../../../domain/metrics';
 
 const GRACE_OPTIONS = [15, 30, 45, 60, 90, 120, 180, 240].filter(
   (g) => g >= GRACE_MIN && g <= GRACE_MAX,
@@ -12,7 +13,8 @@ const GRACE_OPTIONS = [15, 30, 45, 60, 90, 120, 180, 240].filter(
 export function ReminderSettings() {
   const app = useApp();
   const [newTime, setNewTime] = useState('08:00');
-  const [newMetric, setNewMetric] = useState('glucose');
+  const primaryId = primaryMetric(app.registry).id;
+  const [newMetric, setNewMetric] = useState(primaryId);
   const [error, setError] = useState<string | null>(null);
   const sorted = app.reminders.slice().sort((a, b) => a.time.localeCompare(b.time));
 
@@ -36,7 +38,7 @@ export function ReminderSettings() {
     const r: Reminder = {
       id: newId(),
       time: newTime,
-      metricId: app.enabledMetrics.some((d) => d.id === newMetric) ? newMetric : 'glucose',
+      metricId: app.enabledMetrics.some((d) => d.id === newMetric) ? newMetric : primaryId,
       enabled: true,
       createdAt: now,
       updatedAt: now,

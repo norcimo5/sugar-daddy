@@ -1,6 +1,6 @@
 /**
  * CSV export of measurements (FR-E1..E3). RFC 4180 escaping, UTF-8 BOM, CRLF line endings,
- * and a formula-injection guard on free-text cells.
+ * and a formula-injection guard on every text cell (imported data is untrusted).
  */
 import type { Measurement, MetricRegistry } from './types';
 
@@ -83,20 +83,22 @@ export function measurementsToCsv(ms: Measurement[], registry: MetricRegistry): 
     for (const f of fields) {
       const n = m.value[f.key];
       if (n === undefined) continue;
+      // Every text cell may come from an imported backup, so all are formula-guarded. Only the
+      // numeric value (String(n)) and the locally formatted time are left as-is.
       out += row([
-        m.id,
-        def?.name ?? m.metricId,
-        f.key,
+        guardFormula(m.id),
+        guardFormula(def?.name ?? m.metricId),
+        guardFormula(f.key),
         String(n),
-        f.unit,
+        guardFormula(f.unit),
         guardFormula(m.raw[f.key] ?? ''),
         local,
-        m.timeZone,
-        m.takenAt,
+        guardFormula(m.timeZone),
+        guardFormula(m.takenAt),
         guardFormula(m.note ?? ''),
-        m.source,
-        m.createdAt,
-        m.updatedAt,
+        guardFormula(m.source),
+        guardFormula(m.createdAt),
+        guardFormula(m.updatedAt),
       ]);
     }
   }

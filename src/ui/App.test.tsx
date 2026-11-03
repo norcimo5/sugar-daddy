@@ -39,8 +39,10 @@ function glucose(id: string, value: number, takenAt: string, note?: string): Mea
 }
 
 async function go(hash: string) {
+  // Like a real browser: setting the hash fires exactly one (async) hashchange.
+  const fired = new Promise((r) => window.addEventListener('hashchange', r, { once: true }));
   location.hash = hash;
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  await fired;
 }
 
 afterEach(() => {
@@ -70,6 +72,8 @@ describe('App integration', () => {
     expect(saved).toHaveLength(1);
     expect(saved[0]).toMatchObject({ value: { value: 112 }, raw: { value: '112' }, unit: 'mg/dL' });
     expect(saved[0]!.note).toBeUndefined();
+    const firstTakenAt = saved[0]!.takenAt;
+    const firstZone = saved[0]!.timeZone;
 
     // Edit
     await go(`#/edit/${saved[0]!.id}`);
@@ -81,13 +85,21 @@ describe('App integration', () => {
       expect(saved[0]!.value.value).toBe(118);
     });
     expect(saved[0]!.createdAt).not.toBe(saved[0]!.updatedAt);
+    // Time untouched → stored instant, zone and provenance are preserved exactly.
+    expect(saved[0]!.takenAt).toBe(firstTakenAt);
+    expect(saved[0]!.timeZone).toBe(firstZone);
+    expect(saved[0]!.source).toBe('manual');
+    // The app returns to the previous screen after saving.
+    await screen.findByRole('heading', { name: 'Today', hidden: true });
 
     // Delete requires confirmation
     await go(`#/edit/${saved[0]!.id}`);
     fireEvent.click(await screen.findByRole('button', { name: 'Delete reading' }));
     expect(await repo.listMeasurements()).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, delete' })); // double tap is harmless
     await waitFor(async () => expect(await repo.listMeasurements()).toHaveLength(0));
+    await screen.findByRole('heading', { name: 'Today', hidden: true });
   });
 
   it('rejects invalid input without saving or rewriting the value', async () => {
@@ -283,5 +295,34 @@ describe('App integration', () => {
     ).toBeGreaterThan(0);
     expect(input).toHaveValue('123');
     expect(screen.queryByText(/Reading saved/)).toBeNull();
+  });
+
+  it('switching glucose units never rewrites the clinician thresholds', async () => {
+    const { repo } = await setup();
+    await go('#/settings');
+    const card = within(await screen.findByTestId('metric-settings-glucose'));
+    fireEvent.input(card.getByLabelText('Target range — low'), { target: { value: '70' } });
+    fireEvent.input(card.getByLabelText('Target range — high'), { target: { value: '180' } });
+    fireEvent.click(card.getByRole('button', { name: 'Save glucose values' }));
+    const stored = async () =>
+      (await repo.listMetricConfigs()).find((c) => c.metricId === 'glucose')!;
+    await waitFor(async () =>
+      expect((await stored()).thresholds.value).toEqual({ targetLow: 70, targetHigh: 180 }),
+    );
+    expect((await stored()).thresholdUnit).toBe('mg/dL');
+
+    for (const unit of ['mmol/L', 'mg/dL', 'mmol/L']) {
+      const c = within(screen.getByTestId('metric-settings-glucose'));
+      fireEvent.change(c.getByLabelText('Unit'), { target: { value: unit } });
+      await waitFor(async () => expect((await stored()).unit).toBe(unit));
+      expect((await stored()).thresholds.value).toEqual({ targetLow: 70, targetHigh: 180 });
+      expect((await stored()).thresholdUnit).toBe('mg/dL');
+    }
+    // A 3.9 mmol/L reading (≈70.3 mg/dL) is in range; 3.8 (≈68.5) is below.
+    const now = NOW;
+    await repo.putMeasurement({ ...glucose('m', 3.8, now), unit: 'mmol/L', raw: { value: '3.8' } });
+    cleanup();
+    await setup({ wrap: () => repo });
+    expect(screen.getAllByText('Below target range').length).toBeGreaterThan(0);
   });
 });

@@ -194,7 +194,13 @@ export function App(props: AppProps) {
             <button
               type="button"
               class="btn-primary btn-block"
-              onClick={() => void data.actions.saveSettings({ firstRunDone: true })}
+              onClick={() =>
+                data.actions
+                  .saveSettings({ firstRunDone: true })
+                  .catch((e: unknown) =>
+                    showToast(e instanceof Error ? e.message : 'Not saved.', 'error'),
+                  )
+              }
             >
               Got it
             </button>
@@ -207,7 +213,14 @@ export function App(props: AppProps) {
       </div>
       <TabBar current={tab} />
       <div aria-live="polite" role="status" class="sr-only" data-testid="live">
-        {toast?.kind === 'info' ? toast.message : ''}
+        {toast?.kind === 'info' ? (
+          <span key={toast.n}>
+            {toast.message}
+            {toast.n % 2 ? '\u200B' : ''}
+          </span>
+        ) : (
+          ''
+        )}
       </div>
       <div aria-live="assertive" role="alert" class="sr-only">
         {toast?.kind === 'error' ? toast.message : ''}

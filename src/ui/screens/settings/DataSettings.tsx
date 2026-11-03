@@ -54,25 +54,31 @@ export function DataSettings() {
     setPlans(null);
     setConfirmReplace(false);
     if (!file) return;
-    const text = await file.text();
-    const parsed = parseBackup(text, app.registry);
-    if (!parsed.ok) {
-      setRestoreError(parsed.error);
-      return;
+    try {
+      const text = await file.text();
+      const parsed = parseBackup(text, app.registry);
+      if (!parsed.ok) {
+        setRestoreError(parsed.error);
+        return;
+      }
+      const existing = await app.actions.snapshot();
+      setPending({ backup: parsed.value, name: file.name });
+      setPlans({
+        merge: planRestore(existing, parsed.value, 'merge'),
+        replace: planRestore(existing, parsed.value, 'replace'),
+      });
+    } catch {
+      setRestoreError('That file could not be read. Nothing was changed.');
     }
-    const existing = await app.actions.snapshot();
-    setPending({ backup: parsed.value, name: file.name });
-    setPlans({
-      merge: planRestore(existing, parsed.value, 'merge'),
-      replace: planRestore(existing, parsed.value, 'replace'),
-    });
   }
 
   async function apply(mode: RestoreMode) {
-    if (!plans) return;
+    if (!plans || !pending) return;
     setBusy(true);
     try {
-      await app.actions.applyRestore(plans[mode]);
+      // Re-plan against current data so anything changed since the preview is respected.
+      const fresh = planRestore(await app.actions.snapshot(), pending.backup, mode);
+      await app.actions.applyRestore(fresh);
       app.toast(mode === 'merge' ? 'Backup merged.' : 'All data replaced from backup.');
       setPending(null);
       setPlans(null);
@@ -95,7 +101,7 @@ export function DataSettings() {
         or the phone freeing up space can erase them. Download a backup now and then.
       </p>
       <p class="muted" data-testid="backup-status">
-        {last ? `Last backup: ${formatDateTime(new Date(last))}` : 'No backup downloaded yet.'}
+        {last ? `Last backup: ${formatDateTime(new Date(last))}` : 'Never backed up.'}
       </p>
 
       <button type="button" class="btn btn-primary btn-block" onClick={exportBackup}>

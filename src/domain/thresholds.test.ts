@@ -176,3 +176,46 @@ describe('convertThresholds', () => {
     expect(() => convertThresholds(FULL, 'mg/dL', 'kg')).toThrow();
   });
 });
+
+describe('evaluateStatus with thresholdUnit (thresholds keep the unit they were entered in)', () => {
+  const cfg = (over: Partial<MetricConfig>): MetricConfig => ({
+    metricId: 'glucose',
+    enabled: true,
+    unit: 'mg/dL',
+    thresholds: { value: { targetLow: 3.9, targetHigh: 10 } },
+    thresholdUnit: 'mmol/L',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...over,
+  });
+  const reading = (value: number, unit: Unit): Measurement => ({
+    id: 'r',
+    metricId: 'glucose',
+    value: { value },
+    raw: { value: String(value) },
+    unit,
+    takenAt: '2026-01-01T12:00:00.000Z',
+    timeZone: 'UTC',
+    source: 'manual',
+    createdAt: '2026-01-01T12:00:00.000Z',
+    updatedAt: '2026-01-01T12:00:00.000Z',
+  });
+
+  it('a 3.9 mmol/L reading is in range at a 3.9 mmol/L boundary even when display is mg/dL', () => {
+    expect(evaluateStatus(GLUCOSE, cfg({}), reading(3.9, 'mmol/L'))).toBe('in_range');
+  });
+
+  it('converts mg/dL readings into the threshold unit', () => {
+    expect(evaluateStatus(GLUCOSE, cfg({}), reading(60, 'mg/dL'))).toBe('below_target');
+    expect(evaluateStatus(GLUCOSE, cfg({}), reading(100, 'mg/dL'))).toBe('in_range');
+  });
+
+  it('falls back to config.unit when thresholdUnit is absent (older data)', () => {
+    const c = cfg({
+      unit: 'mg/dL',
+      thresholdUnit: undefined,
+      thresholds: { value: { targetLow: 70 } },
+    });
+    expect(evaluateStatus(GLUCOSE, c, reading(69, 'mg/dL'))).toBe('below_target');
+  });
+});

@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { useApp } from '../context';
 import { formatDateTime, rangeFor, type RangeKind } from '../../domain/time';
 import { convertValue, displayDecimals, formatNumber } from '../../domain/units';
-import { formatMeasurementValue, unitLabel } from '../../domain/metrics';
+import { formatMeasurementValue, primaryMetric, unitLabel } from '../../domain/metrics';
 import { RangeControls } from '../components/RangeControls';
 import { MetricFilter } from '../components/MetricFilter';
 import { Chart } from '../components/Chart';
@@ -12,8 +12,10 @@ export function Trends() {
   const now = app.clock.now();
   const [kind, setKind] = useState<RangeKind>('week');
   const [anchor, setAnchor] = useState(now);
-  const [metricId, setMetricId] = useState<string>(app.enabledMetrics[0]?.id ?? 'glucose');
-  const def = app.registry.get(metricId) ?? app.registry.require('glucose');
+  const [metricId, setMetricId] = useState<string>(
+    app.enabledMetrics[0]?.id ?? primaryMetric(app.registry).id,
+  );
+  const def = app.registry.get(metricId) ?? primaryMetric(app.registry);
   const config = app.configFor(def.id);
   const unit = config?.unit ?? def.defaultUnit;
   const range = rangeFor(kind, anchor);
@@ -80,7 +82,7 @@ export function Trends() {
             ) : null}
           </>
         ) : (
-          <p class="empty">No {def.shortName} readings in this period.</p>
+          <p class="empty">No {def.name.toLowerCase()} readings in this period.</p>
         )}
       </div>
       {rows.length ? (

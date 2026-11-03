@@ -36,7 +36,16 @@ const fixtureDefs: MetricDefinition[] = [
     logLabel: 'Log glucose',
     units: ['mg/dL', 'mmol/L'],
     defaultUnit: 'mg/dL',
-    fields: [field('value')],
+    fields: [
+      {
+        ...field('value'),
+        // Unit-dependent limits, so tests can check limits are taken for the reading's unit.
+        limits: (u) =>
+          u === 'mmol/L'
+            ? { min: 0.5, max: 60, maxDecimals: 1 }
+            : { min: 10, max: 1000, maxDecimals: 0 },
+      },
+    ],
     primaryField: 'value',
     thresholdFields: ['value'],
     defaultEnabled: true,
@@ -453,6 +462,125 @@ describe('parseBackup: rejects', () => {
     expect(
       errorOf(parseMutated((b) => b.data.metricConfigs.push({ ...b.data.metricConfigs[0] }))),
     ).toMatch(/^Metric setting 3 .*more than once/);
+  });
+});
+
+describe('parseBackup: normalises timestamps to UTC ISO', () => {
+  function parsedOk(mutate: (b: LooseJson) => void): BackupFile {
+    const r = parseMutated(mutate);
+    if (!r.ok) throw new Error(r.error);
+    return r.value;
+  }
+
+  it('converts an offset measurement takenAt to a Z instant', () => {
+    const v = parsedOk((b) => (b.data.measurements[0].takenAt = '2026-06-15T02:00:00-05:00'));
+    expect(v.data.measurements[0]?.takenAt).toBe('2026-06-15T07:00:00.000Z');
+  });
+
+  it('normalises every stored timestamp', () => {
+    const off = '2026-06-15T02:00:00-05:00';
+    const z = '2026-06-15T07:00:00.000Z';
+    const v = parsedOk((b) => {
+      b.exportedAt = off;
+      b.data.settings.lastBackupAt = off;
+      for (const list of ['measurements', 'reminders', 'metricConfigs']) {
+        for (const r of b.data[list]) {
+          r.createdAt = off;
+          r.updatedAt = off;
+        }
+      }
+      for (const m of b.data.measurements) m.takenAt = off;
+      for (const d of b.data.dismissals) d.createdAt = off;
+    });
+    expect(v.exportedAt).toBe(z);
+    expect(v.data.settings.lastBackupAt).toBe(z);
+    for (const m of v.data.measurements) {
+      expect([m.takenAt, m.createdAt, m.updatedAt]).toEqual([z, z, z]);
+    }
+    for (const r of v.data.reminders) expect([r.createdAt, r.updatedAt]).toEqual([z, z]);
+    for (const c of v.data.metricConfigs) expect([c.createdAt, c.updatedAt]).toEqual([z, z]);
+    for (const d of v.data.dismissals) expect(d.createdAt).toBe(z);
+  });
+
+  it('string ordering of normalised takenAt matches instant ordering', () => {
+    // As raw text, '…T02:00:00-05:00' (07:00Z) sorts before '…T06:00:00Z', though it is later.
+    const v = parsedOk((b) => {
+      b.data.measurements[0].takenAt = '2026-06-15T02:00:00-05:00';
+      b.data.measurements[1].takenAt = '2026-06-15T06:00:00Z';
+    });
+    const byString = [...v.data.measurements.slice(0, 2)]
+      .sort((a, b) => (a.takenAt < b.takenAt ? -1 : 1))
+      .map((m) => m.id);
+    expect(byString).toEqual(['m2', 'm1']);
+  });
+});
+
+describe('parseBackup: value limits', () => {
+  it('rejects a value above the field maximum for the reading unit, naming the index', () => {
+    // m3 is mmol/L; 61 is fine in mg/dL but above the mmol/L max of 60.
+    expect(
+      errorOf(
+        parseMutated((b) => {
+          b.data.measurements[2].value.value = 61;
+          b.data.measurements[2].raw.value = '61';
+        }),
+      ),
+    ).toBe('Measurement 3 has a value outside the allowed range.');
+  });
+
+  it('rejects a value below the field minimum', () => {
+    expect(
+      errorOf(
+        parseMutated((b) => {
+          b.data.measurements[1].value.diastolic = -1;
+        }),
+      ),
+    ).toBe('Measurement 2 has a value outside the allowed range.');
+  });
+
+  it('accepts values exactly at the limits', () => {
+    const r = parseMutated((b) => {
+      b.data.measurements[0].value.value = 10;
+      b.data.measurements[2].value.value = 60;
+    });
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe('parseBackup: dismissal references', () => {
+  it('rejects a dismissal for a reminder not in the backup', () => {
+    expect(
+      errorOf(
+        parseMutated((b) => {
+          b.data.dismissals[0] = {
+            id: 'ghost@2026-11-02',
+            reminderId: 'ghost',
+            date: '2026-11-02',
+            createdAt: T,
+          };
+        }),
+      ),
+    ).toBe('Dismissal 1 refers to a reminder that is not in the backup.');
+  });
+});
+
+describe('parseBackup: thresholdUnit', () => {
+  it('keeps a valid thresholdUnit', () => {
+    const r = parseMutated((b) => (b.data.metricConfigs[0].thresholdUnit = 'mmol/L'));
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.data.metricConfigs[0]?.thresholdUnit).toBe('mmol/L');
+  });
+
+  it('omits thresholdUnit when absent', () => {
+    const r = parseMutated(() => undefined);
+    if (!r.ok) throw new Error(r.error);
+    expect('thresholdUnit' in (r.value.data.metricConfigs[0] ?? {})).toBe(false);
+  });
+
+  it.each(['kg', 'furlongs', 3, null])('rejects thresholdUnit %j', (u) => {
+    expect(errorOf(parseMutated((b) => (b.data.metricConfigs[0].thresholdUnit = u)))).toBe(
+      'Metric setting 1 has an invalid target range unit.',
+    );
   });
 });
 

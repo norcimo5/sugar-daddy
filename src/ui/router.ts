@@ -16,14 +16,22 @@ export type Route =
   | { name: 'settings' }
   | { name: 'about' };
 
+function safeDecode(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+}
+
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#/, '') || '/';
-  const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
+  const parts = path.split('/').filter(Boolean).map(safeDecode);
   switch (parts[0]) {
     case undefined:
       return { name: 'today' };
     case 'log':
-      return { name: 'log', metricId: parts[1] ?? 'glucose' };
+      return { name: 'log', metricId: parts[1] ?? '' }; // '' → primary metric
     case 'edit':
       return parts[1] ? { name: 'edit', id: parts[1] } : { name: 'history' };
     case 'history':
@@ -36,10 +44,23 @@ export function parseRoute(hash: string): Route {
   }
 }
 
+let previousHash: string | null = null;
+let currentHash: string | null = null;
+
+/** The in-app screen the user came from (never a page outside the app). */
+export function previousRoute(): string | null {
+  return previousHash;
+}
+
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(location.hash));
   useEffect(() => {
-    const on = () => setRoute(parseRoute(location.hash));
+    currentHash = location.hash || '#/';
+    const on = () => {
+      previousHash = currentHash;
+      currentHash = location.hash || '#/';
+      setRoute(parseRoute(location.hash));
+    };
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);

@@ -1,5 +1,5 @@
 import { useApp } from '../context';
-import { formatMeasurementValue, unitLabel } from '../../domain/metrics';
+import { formatMeasurementValue, primaryMetric, unitLabel } from '../../domain/metrics';
 import { evaluateStatus } from '../../domain/thresholds';
 import { formatDateLong, formatTime, localDateKey, startOfLocalDay } from '../../domain/time';
 import { evaluateReminders } from '../../domain/reminders';
@@ -12,11 +12,11 @@ import { useNow } from '../useNow';
 export function Today() {
   const app = useApp();
   const now = useNow(app.clock);
-  const glucose = app.registry.require('glucose');
-  const glucoseConfig = app.configFor('glucose');
+  const glucose = primaryMetric(app.registry);
+  const glucoseConfig = app.configFor(glucose.id);
   const todayStart = startOfLocalDay(now).toISOString();
 
-  const latestGlucose = app.measurements.find((m) => m.metricId === 'glucose');
+  const latestGlucose = app.measurements.find((m) => m.metricId === glucose.id);
   const enabledIds = new Set(app.enabledMetrics.map((d) => d.id));
   const todays = app.measurements.filter(
     (m) => m.takenAt >= todayStart && enabledIds.has(m.metricId),
@@ -30,7 +30,7 @@ export function Today() {
     graceMinutes: app.settings.graceMinutes,
   });
 
-  const otherMetrics = app.enabledMetrics.filter((d) => d.id !== 'glucose');
+  const otherMetrics = app.enabledMetrics.filter((d) => d.id !== glucose.id);
   const nextLabel = rem.next
     ? `${rem.next.date === localDateKey(now) ? 'Today' : 'Tomorrow'} at ${formatTime(rem.next.dueAt)} · ${app.registry.require(rem.next.reminder.metricId).shortName}`
     : null;
@@ -90,7 +90,7 @@ export function Today() {
 
       <div class="card latest" aria-labelledby="latest-h">
         <h3 id="latest-h" style={{ margin: 0 }} class="muted">
-          Latest glucose
+          Latest {glucose.shortName.toLowerCase()}
         </h3>
         {latestGlucose ? (
           <>
@@ -112,12 +112,12 @@ export function Today() {
           </>
         ) : (
           <p class="muted" style={{ margin: 0 }}>
-            No glucose readings yet.
+            No {glucose.shortName.toLowerCase()} readings yet.
           </p>
         )}
       </div>
 
-      <a class="btn btn-primary btn-xl" href="#/log/glucose" data-testid="log-glucose">
+      <a class="btn btn-primary btn-xl" href={`#/log/${glucose.id}`} data-testid="log-glucose">
         <Icon name="plus" />
         {glucose.logLabel}
       </a>

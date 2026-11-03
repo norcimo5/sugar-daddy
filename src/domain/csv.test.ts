@@ -311,6 +311,39 @@ describe('measurementsToCsv', () => {
     expect(rows[0]?.[9]).toBe('\'=HYPERLINK("x")');
   });
 
+  it('guards a formula-like id', () => {
+    const evil = m({ id: '=HYPERLINK("http://evil","x")', value: { value: 1 } });
+    const rows = body(measurementsToCsv([evil], fixtureRegistry)).slice(1);
+    expect(rows[0]?.[0]).toBe('\'=HYPERLINK("http://evil","x")');
+  });
+
+  it('guards formula-like time zone, unit, metric, field and timestamp cells', () => {
+    const evil = m({
+      metricId: '+mystery',
+      value: { '@f': 1 },
+      raw: { '@f': '1' },
+      unit: '-x' as Unit,
+      timeZone: '=1+1',
+      takenAt: '2026-11-03T12:30:00.000Z',
+      createdAt: '=c',
+      updatedAt: '@u',
+      source: '=s' as Measurement['source'],
+    });
+    const r = body(measurementsToCsv([evil], fixtureRegistry))[1] ?? [];
+    expect(r[1]).toBe("'+mystery");
+    expect(r[2]).toBe("'@f");
+    expect(r[4]).toBe("'-x");
+    expect(r[7]).toBe("'=1+1");
+    expect(r[10]).toBe("'=s");
+    expect(r[11]).toBe("'=c");
+    expect(r[12]).toBe("'@u");
+  });
+
+  it('does not guard the numeric value cell (negative numbers stay numbers)', () => {
+    const rows = body(measurementsToCsv([m({ value: { value: -1 } })], fixtureRegistry)).slice(1);
+    expect(rows[0]?.[3]).toBe('-1');
+  });
+
   it('leaves an empty note as an empty cell', () => {
     const rows = body(measurementsToCsv([m({ value: { value: 1 } })], fixtureRegistry)).slice(1);
     expect(rows[0]?.[9]).toBe('');
