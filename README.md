@@ -266,7 +266,7 @@ Recorded 2026-11-03 on Linux (Node 26.3.0), from a fresh `npm run check` (exit 0
 | `prettier --check`                 | All files formatted                                                                              |
 | `eslint .`                         | 0 problems                                                                                       |
 | `tsc --noEmit` (strict)            | 0 errors                                                                                         |
-| Unit + integration (`npm test`)    | 27 files, **671 tests passed** (incl. 72 WCAG contrast checks, both themes)                      |
+| Unit + integration (`npm test`)    | 27 files, **673 tests passed** (incl. 72 WCAG contrast checks, both themes)                      |
 | Production build (`npm run build`) | Built to `dist/` (~80 kB JS, 27 kB gzipped); `verify-pwa`: 21/21 checks passed                   |
 | E2E `android-chromium` (Pixel 7)   | 12/12 passed                                                                                     |
 | E2E `iphone-viewport-chromium`     | 12/12 passed                                                                                     |
@@ -279,8 +279,13 @@ merge → reminders and the missed indicator on a fixed clock → offline reload
 logging), plus manifest, icon sizes, service-worker activation, no console errors and no
 requests to other origins.
 
+**Live deployment verified** at <https://norcimo5.github.io/sugar-daddy/> (GitHub Pages, via the
+Actions workflow): HTTPS 200, service worker scope `/sugar-daddy/` controlling the page, valid
+manifest with all icons loading, offline reload keeps saved readings, no console errors, no
+requests to other origins (automated Chromium, Pixel 7 profile).
+
 **Not verified:** installation and use on physical Android and iOS devices, iOS Safari/WebKit
-behaviour, screen readers (TalkBack/VoiceOver), and deployment to a real HTTPS host. See
+behaviour, and screen readers (TalkBack/VoiceOver). See
 `docs/known-limitations.md` and the manual checklist in `docs/test-plan.md`.
 
 ### How it was built

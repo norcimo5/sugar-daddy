@@ -127,7 +127,8 @@ marked "Not needed" only once they are missed, not in advance.
 
 The service worker serves the cached `/` as the app shell and rebuilds redirected responses, to
 cope with hosts that redirect `/index.html` → `/` (Cloudflare Pages, Netlify pretty URLs). This
-was reasoned about and tested against `vite preview` only, not against those hosts. After
+was tested against `vite preview` and the live GitHub Pages deployment, but not against
+Cloudflare Pages or Netlify. After
 deploying, open the app, go offline, and reload once to confirm.
 
 ## Updates
