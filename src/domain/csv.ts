@@ -2,6 +2,7 @@
  * CSV export of measurements (FR-E1..E3). RFC 4180 escaping, UTF-8 BOM, CRLF line endings,
  * and a formula-injection guard on every text cell (imported data is untrusted).
  */
+import { contextLabel } from './metrics';
 import type { Measurement, MetricRegistry } from './types';
 
 export const CSV_HEADERS = [
@@ -15,6 +16,7 @@ export const CSV_HEADERS = [
   'time_zone',
   'taken_at_utc',
   'note',
+  'context',
   'source',
   'created_at',
   'updated_at',
@@ -80,6 +82,7 @@ export function measurementsToCsv(ms: Measurement[], registry: MetricRegistry): 
       ? def.fields.map((f) => ({ key: f.key, unit: f.unitLabel ?? m.unit }))
       : Object.keys(m.value).map((key) => ({ key, unit: m.unit as string }));
     const local = formatLocal(m.takenAt, m.timeZone);
+    const context = (def && contextLabel(def, m.context)) ?? m.context ?? '';
     for (const f of fields) {
       const n = m.value[f.key];
       if (n === undefined) continue;
@@ -96,6 +99,7 @@ export function measurementsToCsv(ms: Measurement[], registry: MetricRegistry): 
         guardFormula(m.timeZone),
         guardFormula(m.takenAt),
         guardFormula(m.note ?? ''),
+        guardFormula(context),
         guardFormula(m.source),
         guardFormula(m.createdAt),
         guardFormula(m.updatedAt),

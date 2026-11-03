@@ -50,6 +50,10 @@ const fixtureDefs: MetricDefinition[] = [
     thresholdFields: ['value'],
     defaultEnabled: true,
     order: 0,
+    contexts: [
+      { key: 'before_meal', label: 'Before meal' },
+      { key: 'fasting', label: 'Fasting' },
+    ],
   },
   {
     id: 'blood_pressure',
@@ -99,6 +103,7 @@ function sampleSnapshot(): AppSnapshot {
     settings: {
       tone: 'neutral',
       textSize: 'large',
+      theme: 'dark',
       graceMinutes: 90,
       notificationsEnabled: true,
       lastBackupAt: T,
@@ -143,7 +148,12 @@ function sampleSnapshot(): AppSnapshot {
         raw: { systolic: '120', diastolic: '80', pulse: '66' },
         source: 'import',
       }),
-      meas('m3', { value: { value: 6.15 }, raw: { value: '6.15' }, unit: 'mmol/L' }),
+      meas('m3', {
+        value: { value: 6.15 },
+        raw: { value: '6.15' },
+        unit: 'mmol/L',
+        context: 'before_meal',
+      }),
     ],
   };
 }
@@ -224,6 +234,49 @@ describe('parseBackup: accepts', () => {
       delete b.data.measurements[1].raw.pulse;
     });
     expect(r.ok).toBe(true);
+  });
+});
+
+describe('parseBackup: theme and reading context', () => {
+  it('keeps settings.theme and measurement.context', () => {
+    const r = parseMutated(() => {});
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.data.settings.theme).toBe('dark');
+    expect(r.value.data.measurements[2]?.context).toBe('before_meal');
+  });
+
+  it.each(['system', 'light', 'dark'])('accepts theme %s', (theme) => {
+    const r = parseMutated((b) => (b.data.settings.theme = theme));
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.data.settings.theme).toBe(theme);
+  });
+
+  it('parses a backup made before themes and contexts existed (theme → system)', () => {
+    const r = parseMutated((b) => {
+      delete b.data.settings.theme;
+      for (const m of b.data.measurements) delete m.context;
+    });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.data.settings.theme).toBe('system');
+    expect(r.value.data.measurements.every((m) => !('context' in m))).toBe(true);
+  });
+
+  it.each([['neon'], [''], [1], [null]])('rejects an invalid theme %j', (theme) => {
+    expect(errorOf(parseMutated((b) => (b.data.settings.theme = theme)))).toBe(
+      'Settings have an invalid theme.',
+    );
+  });
+
+  it.each([['lunch'], [''], [3], [null]])('rejects an unknown context %j', (context) => {
+    expect(errorOf(parseMutated((b) => (b.data.measurements[0].context = context)))).toBe(
+      'Measurement 1 has an unknown context.',
+    );
+  });
+
+  it('rejects a context on a metric that has no contexts', () => {
+    expect(errorOf(parseMutated((b) => (b.data.measurements[1].context = 'before_meal')))).toBe(
+      'Measurement 2 has an unknown context.',
+    );
   });
 });
 

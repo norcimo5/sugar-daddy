@@ -58,6 +58,13 @@ export const GLUCOSE: MetricDefinition = {
   thresholdFields: ['value'],
   defaultEnabled: true,
   order: 10,
+  contexts: [
+    { key: 'before_meal', label: 'Before meal' },
+    { key: 'after_meal', label: 'After meal' },
+    { key: 'fasting', label: 'Fasting' },
+    { key: 'bedtime', label: 'Bedtime' },
+    { key: 'other', label: 'Other' },
+  ],
 };
 
 export const BLOOD_PRESSURE: MetricDefinition = {
@@ -204,4 +211,10 @@ export function formatMeasurementValue(
 
 export function unitLabel(_def: MetricDefinition, unit: Unit): string {
   return unit;
+}
+
+/** Display label for a reading context key; undefined when absent or not in `def.contexts`. */
+export function contextLabel(def: MetricDefinition, key?: string): string | undefined {
+  if (key === undefined) return undefined;
+  return def.contexts?.find((c) => c.key === key)?.label;
 }

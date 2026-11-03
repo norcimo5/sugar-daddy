@@ -20,7 +20,9 @@ daylight-saving transitions are exercised deterministically; `time.test.ts` asse
 ## 1. Unit tests
 
 At time of writing the table below was compiled with 20 files / 477 tests; after the code-review
-fixes the suite is **21 files, 523 tests, all passing** (see README "Verification status")
+fixes and the Phase 2 storyboard/HUD work the suite is **27 files, 671 tests, all passing**
+(including `scripts/contrast.test.mjs`: WCAG contrast of every text/border token in both themes;
+see README "Verification status")
 (`TZ=America/New_York npx vitest run`, Vitest 5.1.0, Node 26.3.0).
 
 | File                                   | Tests | Covers                                                                                                                                                                                                                                                                                                                                                                  |

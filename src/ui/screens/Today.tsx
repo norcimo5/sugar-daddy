@@ -1,5 +1,12 @@
 import { useApp } from '../context';
-import { formatMeasurementValue, primaryMetric, unitLabel } from '../../domain/metrics';
+import {
+  contextLabel,
+  formatMeasurementValue,
+  primaryMetric,
+  unitLabel,
+} from '../../domain/metrics';
+import { targetFraction } from '../ringFraction';
+import { RingGauge } from '../components/RingGauge';
 import { evaluateStatus } from '../../domain/thresholds';
 import { formatDateLong, formatTime, localDateKey, startOfLocalDay } from '../../domain/time';
 import { evaluateReminders } from '../../domain/reminders';
@@ -14,6 +21,11 @@ export function Today() {
   const now = useNow(app.clock);
   const glucose = primaryMetric(app.registry);
   const glucoseConfig = app.configFor(glucose.id);
+  const glucoseUnit = glucoseConfig?.unit ?? glucose.defaultUnit;
+  const whenLabel = (iso: string) =>
+    localDateKey(new Date(iso)) === localDateKey(now)
+      ? `Today at ${formatTime(new Date(iso))}`
+      : new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
   const todayStart = startOfLocalDay(now).toISOString();
 
   const latestGlucose = app.measurements.find((m) => m.metricId === glucose.id);
@@ -88,23 +100,27 @@ export function Today() {
         );
       })}
 
-      <div class="card latest" aria-labelledby="latest-h">
-        <h3 id="latest-h" style={{ margin: 0 }} class="muted">
+      <div class="card latest hero" aria-labelledby="latest-h">
+        <h3 id="latest-h" class="label" style={{ margin: 0 }}>
           Latest {glucose.shortName.toLowerCase()}
         </h3>
         {latestGlucose ? (
           <>
-            <div class="value" data-testid="latest-value">
-              {formatMeasurementValue(glucose, latestGlucose, glucoseConfig?.unit)}
-              <small>{unitLabel(glucose, glucoseConfig?.unit ?? latestGlucose.unit)}</small>
-            </div>
-            <div class="muted">
-              {localDateKey(new Date(latestGlucose.takenAt)) === localDateKey(now)
-                ? `Today at ${formatTime(new Date(latestGlucose.takenAt))}`
-                : new Date(latestGlucose.takenAt).toLocaleString(undefined, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  })}
+            <div data-testid="latest-value">
+              <RingGauge
+                label={`Latest ${glucose.shortName.toLowerCase()}`}
+                value={formatMeasurementValue(glucose, latestGlucose, glucoseUnit)}
+                unit={unitLabel(glucose, glucoseUnit)}
+                caption={[
+                  whenLabel(latestGlucose.takenAt),
+                  contextLabel(glucose, latestGlucose.context),
+                ]
+                  .filter(Boolean)
+                  .join('\n')}
+                fraction={
+                  glucoseConfig ? targetFraction(glucose, glucoseConfig, latestGlucose) : null
+                }
+              />
             </div>
             {glucoseConfig ? (
               <StatusBadge kind={evaluateStatus(glucose, glucoseConfig, latestGlucose)} />
@@ -122,16 +138,32 @@ export function Today() {
         {glucose.logLabel}
       </a>
 
-      {otherMetrics.length ? (
-        <div class="btn-row" style={{ marginTop: '12px' }}>
-          {otherMetrics.map((d) => (
-            <a key={d.id} class="btn" href={`#/log/${d.id}`}>
-              <Icon name="plus" />
-              {d.logLabel}
-            </a>
-          ))}
-        </div>
-      ) : null}
+      <ul class="tiles" aria-label="Measurements">
+        {app.enabledMetrics.map((d) => {
+          const latest = app.measurements.find((m) => m.metricId === d.id);
+          const u = app.configFor(d.id)?.unit ?? d.defaultUnit;
+          return (
+            <li key={d.id} class="tile" data-testid={`tile-${d.id}`}>
+              <a href={`#/metric/${d.id}`} class="tile-main">
+                <span class="label">{d.name}</span>
+                <span class="tile-value">
+                  {latest ? (
+                    <>
+                      {formatMeasurementValue(d, latest, u)} <small>{unitLabel(d, u)}</small>
+                    </>
+                  ) : (
+                    <small>No readings</small>
+                  )}
+                </span>
+                {latest ? <span class="row-meta">{whenLabel(latest.takenAt)}</span> : null}
+              </a>
+              <a class="btn" href={`#/log/${d.id}`} aria-label={d.logLabel}>
+                Record
+              </a>
+            </li>
+          );
+        })}
+      </ul>
 
       <p class="muted" style={{ marginTop: '14px' }} data-testid="next-reminder">
         <Icon name="bell" />{' '}

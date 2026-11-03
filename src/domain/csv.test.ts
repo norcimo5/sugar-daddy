@@ -27,6 +27,10 @@ const fixtureDefs: MetricDefinition[] = [
     thresholdFields: ['value'],
     defaultEnabled: true,
     order: 0,
+    contexts: [
+      { key: 'before_meal', label: 'Before meal' },
+      { key: 'other', label: 'Other' },
+    ],
   },
   {
     id: 'blood_pressure',
@@ -169,6 +173,7 @@ describe('CSV_HEADERS', () => {
       'time_zone',
       'taken_at_utc',
       'note',
+      'context',
       'source',
       'created_at',
       'updated_at',
@@ -207,6 +212,7 @@ describe('measurementsToCsv', () => {
       'America/New_York',
       '2026-11-03T12:30:00.000Z',
       'after lunch',
+      '',
       'manual',
       '2026-11-03T12:31:00.000Z',
       '2026-11-03T12:32:00.000Z',
@@ -334,9 +340,36 @@ describe('measurementsToCsv', () => {
     expect(r[2]).toBe("'@f");
     expect(r[4]).toBe("'-x");
     expect(r[7]).toBe("'=1+1");
-    expect(r[10]).toBe("'=s");
-    expect(r[11]).toBe("'=c");
-    expect(r[12]).toBe("'@u");
+    expect(r[11]).toBe("'=s");
+    expect(r[12]).toBe("'=c");
+    expect(r[13]).toBe("'@u");
+  });
+
+  it('writes the context label right after the note', () => {
+    const rows = body(
+      measurementsToCsv(
+        [m({ value: { value: 1 }, note: 'n', context: 'before_meal' })],
+        fixtureRegistry,
+      ),
+    );
+    const at = CSV_HEADERS.indexOf('context');
+    expect(at).toBe(CSV_HEADERS.indexOf('note') + 1);
+    expect(rows[1]?.[at]).toBe('Before meal');
+  });
+
+  it('falls back to the context key when it has no label, formula-guarded', () => {
+    const rows = body(
+      measurementsToCsv(
+        [
+          m({ id: 'a', value: { value: 1 }, context: 'legacy' }),
+          m({ id: 'b', value: { value: 1 }, context: '=cmd' }),
+          m({ id: 'c', metricId: 'mystery', value: { a: 1 }, context: 'x' }),
+        ],
+        fixtureRegistry,
+      ),
+    );
+    const at = CSV_HEADERS.indexOf('context');
+    expect(rows.slice(1).map((r) => r[at])).toEqual(['legacy', "'=cmd", 'x']);
   });
 
   it('does not guard the numeric value cell (negative numbers stay numbers)', () => {

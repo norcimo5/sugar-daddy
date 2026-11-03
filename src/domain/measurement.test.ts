@@ -176,3 +176,63 @@ describe('reviseMeasurement', () => {
     });
   });
 });
+
+describe('reading context', () => {
+  it('stores a valid context key, trimmed', () => {
+    const m = ok(buildMeasurement(GLUCOSE, input({ context: ' before_meal ' }), NOW, newId));
+    expect(m.context).toBe('before_meal');
+  });
+
+  it.each([[''], ['   '], [undefined]])('omits an empty context (%j)', (context) => {
+    const m = ok(buildMeasurement(GLUCOSE, input({ context }), NOW, newId));
+    expect('context' in m).toBe(false);
+  });
+
+  it('rejects a context that is not in the list', () => {
+    const r = buildMeasurement(GLUCOSE, input({ context: 'lunch' }), NOW, newId);
+    expect(r).toEqual({ ok: false, error: { context: 'Choose an option from the list.' } });
+  });
+
+  it('rejects any context for a metric without contexts', () => {
+    const r = buildMeasurement(
+      BLOOD_PRESSURE,
+      input({
+        metricId: 'blood_pressure',
+        raw: { systolic: '120', diastolic: '80' },
+        unit: 'mmHg',
+        context: 'before_meal',
+      }),
+      NOW,
+      newId,
+    );
+    expect(r).toEqual({ ok: false, error: { context: 'Choose an option from the list.' } });
+  });
+
+  it('reports a context error alongside field errors', () => {
+    const r = buildMeasurement(GLUCOSE, input({ raw: { value: '' }, context: 'x' }), NOW, newId);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.context).toBe('Choose an option from the list.');
+      expect(r.error.value).toBeDefined();
+    }
+  });
+
+  it('revise sets, changes and clears the context from the input', () => {
+    const base = ok(buildMeasurement(GLUCOSE, input(), NOW, newId));
+    const later = new Date(NOW.getTime() + 60_000);
+    const set = ok(reviseMeasurement(base, GLUCOSE, input({ context: 'fasting' }), later));
+    expect(set.context).toBe('fasting');
+    const changed = ok(reviseMeasurement(set, GLUCOSE, input({ context: 'bedtime' }), later));
+    expect(changed.context).toBe('bedtime');
+    const cleared = ok(reviseMeasurement(changed, GLUCOSE, input({ context: '' }), later));
+    expect('context' in cleared).toBe(false);
+    const omitted = ok(reviseMeasurement(changed, GLUCOSE, input(), later));
+    expect('context' in omitted).toBe(false);
+  });
+
+  it('revise rejects an unknown context', () => {
+    const base = ok(buildMeasurement(GLUCOSE, input(), NOW, newId));
+    const r = reviseMeasurement(base, GLUCOSE, input({ context: 'nope' }), NOW);
+    expect(r).toEqual({ ok: false, error: { context: 'Choose an option from the list.' } });
+  });
+});

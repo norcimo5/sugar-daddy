@@ -6,7 +6,6 @@ export function MetricFilter(props: {
   allowAll?: boolean;
 }) {
   const app = useApp();
-  if (app.enabledMetrics.length <= 1 && !props.allowAll) return null;
   if (app.enabledMetrics.length <= 1) return null;
   return (
     <div class="field">

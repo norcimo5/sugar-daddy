@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BLOOD_PRESSURE,
   BUILTIN_METRICS,
+  contextLabel,
   GLUCOSE,
   KETONES,
   WEIGHT,
@@ -283,5 +284,35 @@ describe('primaryMetric', () => {
       { ...WEIGHT, primary: false },
     ]);
     expect(primaryMetric(reg).id).toBe(WEIGHT.order < KETONES.order ? WEIGHT.id : KETONES.id);
+  });
+});
+
+describe('reading contexts', () => {
+  it('glucose offers the five contexts in order', () => {
+    expect(GLUCOSE.contexts).toEqual([
+      { key: 'before_meal', label: 'Before meal' },
+      { key: 'after_meal', label: 'After meal' },
+      { key: 'fasting', label: 'Fasting' },
+      { key: 'bedtime', label: 'Bedtime' },
+      { key: 'other', label: 'Other' },
+    ]);
+  });
+
+  it('other built-ins have no contexts', () => {
+    expect(BLOOD_PRESSURE.contexts).toBeUndefined();
+    expect(WEIGHT.contexts).toBeUndefined();
+    expect(KETONES.contexts).toBeUndefined();
+  });
+
+  it('contextLabel returns the label for a known key', () => {
+    expect(contextLabel(GLUCOSE, 'before_meal')).toBe('Before meal');
+    expect(contextLabel(GLUCOSE, 'bedtime')).toBe('Bedtime');
+  });
+
+  it('contextLabel is undefined for no key, an unknown key, or a metric without contexts', () => {
+    expect(contextLabel(GLUCOSE)).toBeUndefined();
+    expect(contextLabel(GLUCOSE, undefined)).toBeUndefined();
+    expect(contextLabel(GLUCOSE, 'lunch')).toBeUndefined();
+    expect(contextLabel(BLOOD_PRESSURE, 'before_meal')).toBeUndefined();
   });
 });

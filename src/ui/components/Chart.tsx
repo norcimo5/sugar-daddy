@@ -1,7 +1,9 @@
+import { useState } from 'preact/hooks';
 import type { Measurement, MetricConfig, MetricDefinition } from '../../domain/types';
-import type { DateRange, RangeKind } from '../../domain/time';
+import { formatDateTime, type DateRange, type RangeKind } from '../../domain/time';
 import { convertValue, displayDecimals, formatNumber } from '../../domain/units';
-import { unitLabel } from '../../domain/metrics';
+import { contextLabel, formatMeasurementValue, unitLabel } from '../../domain/metrics';
+import { evaluateStatus, statusLabel } from '../../domain/thresholds';
 import { buildChartModel } from './chartModel';
 
 const W = 340;
@@ -55,6 +57,7 @@ export function Chart(props: {
   range: DateRange;
 }) {
   const { def, config } = props;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const unit = config?.unit ?? def.defaultUnit;
   const fields = def.fields.filter((f) => !f.unitLabel);
   const series = fields.map((f) => ({
@@ -91,11 +94,28 @@ export function Chart(props: {
   const uLabel = unitLabel(def, unit);
   const count = model.series[0]?.points.length ?? 0;
 
+  const byId = new Map(props.measurements.map((m) => [m.id, m]));
+  const statusText = (m: Measurement) => {
+    const k = config ? evaluateStatus(def, config, m) : 'unconfigured';
+    return k === 'unconfigured' ? '' : statusLabel(k);
+  };
+  const pointLabel = (m: Measurement) =>
+    [
+      `${formatMeasurementValue(def, m, unit)} ${uLabel}`,
+      formatDateTime(new Date(m.takenAt)),
+      contextLabel(def, m.context),
+      statusText(m) || undefined,
+    ]
+      .filter(Boolean)
+      .join(', ');
+  const selectedM = selectedId ? byId.get(selectedId) : undefined;
+  const selectedStatus = selectedM ? statusText(selectedM) : '';
+
   return (
     <figure class="chart" style={{ margin: 0 }}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        role="img"
+        role="group"
         aria-label={`${def.name} chart in ${uLabel}. ${count} reading${count === 1 ? '' : 's'}. Details are listed below.`}
       >
         {model.band ? (
@@ -130,23 +150,66 @@ export function Chart(props: {
             {s.path ? (
               <path class="series-line" d={s.path} stroke-dasharray={DASHES[i] || undefined} />
             ) : null}
-            {s.points.map((p) => (
-              <circle
-                key={`${p.id}-${s.key}`}
-                class="series-point"
-                cx={p.x}
-                cy={p.y}
-                r={i === 0 ? 4.5 : 3.5}
-              />
-            ))}
+            {s.points.map((p) => {
+              const selected = i === 0 && p.id === selectedId;
+              const dot = (
+                <circle
+                  key={`${p.id}-${s.key}`}
+                  class={`series-point${selected ? ' selected' : ''}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r={i === 0 ? (selected ? 6.5 : 4.5) : 3.5}
+                />
+              );
+              if (i !== 0) return dot;
+              const m = byId.get(p.id);
+              const label = m ? pointLabel(m) : '';
+              // A large invisible hit area makes each reading easy to tap; one per reading.
+              return (
+                <g
+                  key={`${p.id}-hit`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={label}
+                  aria-pressed={selected}
+                  onClick={() => setSelectedId(selected ? null : p.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedId(selected ? null : p.id);
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <circle cx={p.x} cy={p.y} r={16} fill="transparent" />
+                  {dot}
+                </g>
+              );
+            })}
           </g>
         ))}
       </svg>
+      <div class="chart-tip" aria-live="polite" data-testid="chart-tip" hidden={!selectedM}>
+        {selectedM ? (
+          <>
+            <strong>
+              {formatMeasurementValue(def, selectedM, unit)} {uLabel}
+            </strong>
+            <span>
+              {formatDateTime(new Date(selectedM.takenAt))}
+              {contextLabel(def, selectedM.context)
+                ? ` · ${contextLabel(def, selectedM.context)}`
+                : ''}
+              {selectedStatus ? ` · ${selectedStatus}` : ''}
+            </span>
+          </>
+        ) : null}
+      </div>
       <figcaption class="hint">
         {fields.length > 1
           ? `${fields.map((f, i) => `${f.label} ${i === 0 ? '(solid)' : '(dashed)'}`).join(', ')}. `
           : ''}
-        Points are your saved readings; lines only connect them.
+        Points are your saved readings; lines only connect them. Tap a point for details.
         {band ? ' Shaded area: configured target range.' : ''}
       </figcaption>
     </figure>

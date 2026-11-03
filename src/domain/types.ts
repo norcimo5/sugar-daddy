@@ -10,6 +10,11 @@ export type MetricId = string;
 export const UNITS = ['mg/dL', 'mmol/L', 'mmHg', 'kg', 'lb'] as const;
 export type Unit = (typeof UNITS)[number];
 
+export interface ContextOption {
+  key: string;
+  label: string;
+}
+
 export interface FieldLimits {
   min: number;
   max: number;
@@ -42,6 +47,8 @@ export interface MetricDefinition {
   order: number;
   /** The headline metric shown first on Today (exactly one: glucose). */
   primary?: boolean;
+  /** Optional reading context choices (e.g. Before meal). */
+  contexts?: readonly ContextOption[];
 }
 
 export interface MetricRegistry {
@@ -88,6 +95,8 @@ export interface Measurement {
   /** IANA zone of the device at entry time. */
   timeZone: string;
   note?: string;
+  /** Key from the metric definition's `contexts`. */
+  context?: string;
   source: 'manual' | 'import';
   createdAt: string;
   updatedAt: string;
@@ -100,6 +109,7 @@ export interface MeasurementInput {
   takenAt: string;
   timeZone: string;
   note?: string;
+  context?: string;
 }
 
 export interface Reminder {
@@ -122,10 +132,12 @@ export interface Dismissal {
 
 export type Tone = 'playful' | 'neutral';
 export type TextSize = 'standard' | 'large' | 'xlarge';
+export type ThemePref = 'system' | 'light' | 'dark';
 
 export interface Settings {
   tone: Tone;
   textSize: TextSize;
+  theme: ThemePref;
   graceMinutes: number;
   notificationsEnabled: boolean;
   lastBackupAt?: string;
@@ -135,6 +147,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = Object.freeze({
   tone: 'playful',
   textSize: 'standard',
+  theme: 'system',
   graceMinutes: 60,
   notificationsEnabled: false,
   firstRunDone: false,

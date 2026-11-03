@@ -140,6 +140,12 @@ available" once on installed copies.
 Imported backups are validated strictly (format, version, types, units, value limits, IDs,
 references), but the stored `raw` text is not cross-checked against the numeric `value`.
 
+## Sharing
+
+Share uses the browser's share sheet (`navigator.share`) where available (most phones). Desktop
+browsers without it copy the text to the clipboard instead; if neither is allowed the app says
+so. What happens after you choose a target app is outside Sugar Daddy's control.
+
 ## Dependency audit
 
 `npm audit` reports 11 moderate advisories, all in `minimatch` pulled in by ESLint (development

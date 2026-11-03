@@ -5,13 +5,16 @@ import { useEffect, useState } from 'preact/hooks';
  *   #/            Today
  *   #/log/:metric Log a reading
  *   #/edit/:id    Edit a reading
- *   #/history  #/trends  #/settings  #/about
+ *   #/metric/:id  Per-measurement screen
+ *   #/history[/:metricId]  #/trends  #/settings  #/about  #/guide
  */
 export type Route =
   | { name: 'today' }
   | { name: 'log'; metricId: string }
   | { name: 'edit'; id: string }
-  | { name: 'history' }
+  | { name: 'history'; metricId?: string }
+  | { name: 'metric'; metricId: string }
+  | { name: 'guide' }
   | { name: 'trends' }
   | { name: 'settings' }
   | { name: 'about' };
@@ -35,6 +38,11 @@ export function parseRoute(hash: string): Route {
     case 'edit':
       return parts[1] ? { name: 'edit', id: parts[1] } : { name: 'history' };
     case 'history':
+      return parts[1] ? { name: 'history', metricId: parts[1] } : { name: 'history' };
+    case 'metric':
+      return parts[1] ? { name: 'metric', metricId: parts[1] } : { name: 'today' };
+    case 'guide':
+      return { name: 'guide' };
     case 'trends':
     case 'settings':
     case 'about':

@@ -14,13 +14,21 @@ offline, and keeps every record on the device.
 
 ## Features
 
-- Log a glucose reading with one number: the time defaults to now, and a note is optional.
+- Log a glucose reading with one number: date and time are shown and default to now; unit
+  (mg/dL or mmol/L), "when taken" (Before meal, After meal, Fasting, Bedtime, Other) and a note
+  are optional.
 - Optional metrics (off until you turn them on in Settings): blood pressure (systolic/diastolic
   in mmHg, optional pulse in bpm), weight (kg or lb), ketones (mmol/L).
 - Values are stored exactly as entered, with the unit, time and time zone. Nothing is rounded,
   clamped or rewritten.
 - Glucose display in mg/dL or mmol/L (display conversion only; records keep their original unit).
-- Today screen: latest reading, today's readings, next reminder, missed-reading banner.
+- Today screen: latest glucose in a ring gauge, a tile per measurement (latest value + Record),
+  today's readings, next reminder, missed-reading banner.
+- Per-measurement screen: chart (tap a point for its value, time and context), recent readings
+  with Edit / Share / Delete, "View all", and a fixed "Add new record" button.
+- Share a reading or a period summary through the phone's share sheet (or copy it). Notes are
+  never included and nothing is sent unless you tap Share.
+- A short "How to log a reading" guide (lightbulb button in the header).
 - History and Trends: day / week / month views, filtered by metric, with simple charts that plot only real
   readings.
 - Status (in range, above, below) only from target ranges and alert thresholds that you enter
@@ -30,7 +38,8 @@ offline, and keeps every record on the device.
 - Optional notifications while the app is open (see
   [known limitations](docs/known-limitations.md#notifications)).
 - CSV export and JSON backup / restore with validation and a preview before anything changes.
-- Playful or neutral wording, three text sizes, light and dark themes.
+- Playful or neutral wording, three text sizes, and a sci-fi HUD look in **light and dark**
+  (Settings → Appearance: Match my phone / Light / Dark, or the sun/moon button in the header).
 - No account, no analytics, no server.
 
 ## Requirements
@@ -255,10 +264,10 @@ Recorded 2026-11-03 on Linux (Node 26.3.0), from a fresh `npm run check` (exit 0
 | `prettier --check`                 | All files formatted                                                                              |
 | `eslint .`                         | 0 problems                                                                                       |
 | `tsc --noEmit` (strict)            | 0 errors                                                                                         |
-| Unit + integration (`npm test`)    | 21 files, **523 tests passed**                                                                   |
+| Unit + integration (`npm test`)    | 27 files, **671 tests passed** (incl. 72 WCAG contrast checks, both themes)                      |
 | Production build (`npm run build`) | Built to `dist/` (~80 kB JS, 27 kB gzipped); `verify-pwa`: 21/21 checks passed                   |
-| E2E `android-chromium` (Pixel 7)   | 10/10 passed                                                                                     |
-| E2E `iphone-viewport-chromium`     | 10/10 passed                                                                                     |
+| E2E `android-chromium` (Pixel 7)   | 12/12 passed                                                                                     |
+| E2E `iphone-viewport-chromium`     | 12/12 passed                                                                                     |
 | E2E `iphone-webkit`                | **Not run** — WebKit cannot launch on the build machine (missing `libmanette-0.2-0`, needs sudo) |
 | `npm audit --omit=dev`             | 0 vulnerabilities (dev-only: 11 moderate in ESLint's `minimatch`)                                |
 

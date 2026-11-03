@@ -1,5 +1,5 @@
 import type { Measurement, MetricConfig, MetricDefinition } from '../../domain/types';
-import { formatMeasurementValue, unitLabel } from '../../domain/metrics';
+import { contextLabel, formatMeasurementValue, unitLabel } from '../../domain/metrics';
 import { evaluateStatus, statusLabel } from '../../domain/thresholds';
 import { formatDateTime, formatTime } from '../../domain/time';
 import { Icon } from './Icon';
@@ -20,9 +20,11 @@ export function MeasurementRow(props: {
   const time = props.showDate ? formatDateTime(when) : formatTime(when);
   const status = config ? evaluateStatus(def, config, m) : 'unconfigured';
   const statusText = status === 'unconfigured' ? '' : statusLabel(status);
+  const ctx = contextLabel(def, m.context);
   const label = [
     props.showMetric ? def.name : null,
     `${value} ${unit}`,
+    ctx ?? null,
     time,
     statusText || null,
     m.note ? 'has a note' : null,
@@ -39,6 +41,7 @@ export function MeasurementRow(props: {
         </span>
         <span class="row-meta" style={{ display: 'block' }}>
           {props.showMetric ? `${def.shortName} · ` : ''}
+          {ctx ? `${ctx} · ` : ''}
           {time}
           {statusText ? ` · ${statusText}` : ''}
         </span>

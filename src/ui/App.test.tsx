@@ -325,4 +325,112 @@ describe('App integration', () => {
     await setup({ wrap: () => repo });
     expect(screen.getAllByText('Below target range').length).toBeGreaterThan(0);
   });
+
+  describe('storyboard features', () => {
+    it('saves context, the chosen unit and a back-dated time exactly', async () => {
+      const { repo } = await setup();
+      await go('#/log/glucose');
+      fireEvent.click(await screen.findByRole('button', { name: 'mmol/L' }));
+      fireEvent.input(screen.getByLabelText('Glucose in mmol/L'), { target: { value: '6.1' } });
+      fireEvent.change(screen.getByLabelText(/When was it taken/), {
+        target: { value: 'before_meal' },
+      });
+      fireEvent.input(screen.getByLabelText('Date'), { target: { value: '2026-06-14' } });
+      fireEvent.input(screen.getByLabelText('Time'), { target: { value: '07:30' } });
+      fireEvent.click(screen.getByTestId('save'));
+      await waitFor(async () => expect(await repo.listMeasurements()).toHaveLength(1));
+      const [m] = await repo.listMeasurements();
+      expect(m).toMatchObject({
+        unit: 'mmol/L',
+        value: { value: 6.1 },
+        raw: { value: '6.1' },
+        context: 'before_meal',
+        takenAt: '2026-06-14T11:30:00.000Z', // 07:30 EDT
+      });
+    });
+
+    it('stamps an untouched new reading with the moment Save is tapped', async () => {
+      const { repo, clock } = await setup();
+      await go('#/log/glucose');
+      fireEvent.input(await screen.findByLabelText('Glucose in mg/dL'), {
+        target: { value: '99' },
+      });
+      const before = clock.now().getTime();
+      fireEvent.click(screen.getByTestId('save'));
+      await waitFor(async () => expect(await repo.listMeasurements()).toHaveLength(1));
+      const t = Date.parse((await repo.listMeasurements())[0]!.takenAt);
+      expect(t).toBeGreaterThanOrEqual(before);
+      expect(t - before).toBeLessThan(5000);
+    });
+
+    it('per-measurement screen lists recent readings with inline delete and View all', async () => {
+      const { repo } = await setup();
+      await repo.putMeasurement({
+        ...glucose('a', 101, '2026-06-15T12:00:00.000Z'),
+        context: 'fasting',
+      });
+      await repo.putMeasurement(glucose('b', 150, '2026-06-15T14:00:00.000Z'));
+      cleanup();
+      await setup({ wrap: () => repo });
+      fireEvent.click(within(screen.getByTestId('tile-glucose')).getByText('Glucose'));
+      const recent = within(await screen.findByTestId('recent-list'));
+      expect(recent.getAllByRole('listitem')).toHaveLength(2);
+      expect(recent.getByText(/Fasting/)).toBeInTheDocument();
+      fireEvent.click(recent.getByRole('button', { name: /^Delete 150 mg\/dL/ }));
+      expect(await repo.listMeasurements()).toHaveLength(2); // confirmation required
+      fireEvent.click(recent.getByRole('button', { name: 'Yes, delete' }));
+      await waitFor(async () => expect(await repo.listMeasurements()).toHaveLength(1));
+      expect(screen.getByRole('link', { name: /View all/ })).toHaveAttribute(
+        'href',
+        '#/history/glucose',
+      );
+      expect(screen.getByTestId('add-record')).toHaveAttribute('href', '#/log/glucose');
+    });
+
+    it('shares a reading without the note, falling back to copying', async () => {
+      const { repo } = await setup();
+      await repo.putMeasurement(glucose('a', 101, '2026-06-15T12:00:00.000Z', 'private note'));
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      cleanup();
+      await setup({ wrap: () => repo });
+      await go('#/metric/glucose');
+      fireEvent.click(await screen.findByRole('button', { name: /^Share 101 mg\/dL/ }));
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+      const text = writeText.mock.calls[0]![0] as string;
+      expect(text).toContain('101 mg/dL');
+      expect(text).not.toContain('private note');
+      expect(await screen.findByTestId('live')).toHaveTextContent('Copied');
+    });
+
+    it('History filters by context for the selected measurement', async () => {
+      const { repo } = await setup();
+      await repo.putMeasurement({
+        ...glucose('a', 101, '2026-06-15T12:00:00.000Z'),
+        context: 'fasting',
+      });
+      await repo.putMeasurement({
+        ...glucose('b', 150, '2026-06-15T14:00:00.000Z'),
+        context: 'after_meal',
+      });
+      cleanup();
+      await setup({ wrap: () => repo });
+      await go('#/history/glucose');
+      await screen.findByTestId('history-list');
+      expect(screen.getByTestId('history-count')).toHaveTextContent('2 readings');
+      fireEvent.change(screen.getByLabelText('When taken'), { target: { value: 'fasting' } });
+      await waitFor(() =>
+        expect(screen.getByTestId('history-count')).toHaveTextContent('1 reading'),
+      );
+    });
+
+    it('theme toggle switches and persists the theme', async () => {
+      const { repo } = await setup();
+      const toggle = screen.getByRole('button', { name: /Switch to (dark|light) mode/ });
+      const target = /dark/.test(toggle.getAttribute('aria-label')!) ? 'dark' : 'light';
+      fireEvent.click(toggle);
+      await waitFor(async () => expect((await repo.getSettings()).theme).toBe(target));
+      await waitFor(() => expect(document.documentElement.dataset.theme).toBe(target));
+    });
+  });
 });

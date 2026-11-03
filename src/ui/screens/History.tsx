@@ -6,12 +6,14 @@ import { RangeControls } from '../components/RangeControls';
 import { MeasurementRow } from '../components/MeasurementRow';
 import { MetricFilter } from '../components/MetricFilter';
 
-export function History() {
+export function History(props: { metricId?: string } = {}) {
   const app = useApp();
   const now = app.clock.now();
   const [kind, setKind] = useState<RangeKind>('week');
   const [anchor, setAnchor] = useState(now);
-  const [metricId, setMetricId] = useState<string>('all');
+  const [metricId, setMetricId] = useState<string>(props.metricId ?? 'all');
+  const [context, setContext] = useState<string>('all');
+  const filterDef = metricId === 'all' ? undefined : app.registry.get(metricId);
   const range = rangeFor(kind, anchor);
   const from = range.start.toISOString();
   const to = range.end.toISOString();
@@ -20,13 +22,39 @@ export function History() {
     (m) =>
       m.takenAt >= from &&
       m.takenAt < to &&
-      (metricId === 'all' ? enabled.has(m.metricId) : m.metricId === metricId),
+      (metricId === 'all' ? enabled.has(m.metricId) : m.metricId === metricId) &&
+      (context === 'all' || (context === 'none' ? !m.context : m.context === context)),
   );
 
   return (
     <section aria-labelledby="hist-h">
       <h2 id="hist-h">History</h2>
-      <MetricFilter value={metricId} onChange={setMetricId} allowAll />
+      <MetricFilter
+        value={metricId}
+        onChange={(id) => {
+          setMetricId(id);
+          setContext('all');
+        }}
+        allowAll
+      />
+      {filterDef?.contexts?.length ? (
+        <div class="field">
+          <label for="context-filter">When taken</label>
+          <select
+            id="context-filter"
+            value={context}
+            onChange={(e) => setContext((e.target as HTMLSelectElement).value)}
+          >
+            <option value="all">Any time</option>
+            {filterDef.contexts.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
+              </option>
+            ))}
+            <option value="none">Not specified</option>
+          </select>
+        </div>
+      ) : null}
       <RangeControls
         kind={kind}
         anchor={anchor}

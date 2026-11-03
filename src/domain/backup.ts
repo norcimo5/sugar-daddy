@@ -18,6 +18,7 @@ import {
   type Result,
   type Settings,
   type TextSize,
+  type ThemePref,
   type Thresholds,
   type Tone,
   type Unit,
@@ -130,6 +131,7 @@ function isLocalDate(v: unknown): v is string {
 
 const TONES: readonly Tone[] = ['playful', 'neutral'];
 const TEXT_SIZES: readonly TextSize[] = ['standard', 'large', 'xlarge'];
+const THEMES: readonly ThemePref[] = ['system', 'light', 'dark'];
 const THRESHOLD_KEYS: readonly (keyof Thresholds)[] = [
   'targetLow',
   'targetHigh',
@@ -155,6 +157,10 @@ function validateSettings(v: unknown): Settings {
   if (!isObj(v)) fail('Settings are missing or damaged.');
   if (!TONES.includes(v.tone as Tone)) fail('Settings have an invalid tone.');
   if (!TEXT_SIZES.includes(v.textSize as TextSize)) fail('Settings have an invalid text size.');
+  // Absent in backups made before themes existed → 'system'.
+  if (v.theme !== undefined && !THEMES.includes(v.theme as ThemePref)) {
+    fail('Settings have an invalid theme.');
+  }
   if (!isFiniteNumber(v.graceMinutes) || v.graceMinutes < GRACE_MIN || v.graceMinutes > GRACE_MAX) {
     fail(`Settings have an invalid grace period (must be ${GRACE_MIN}–${GRACE_MAX} minutes).`);
   }
@@ -167,6 +173,7 @@ function validateSettings(v: unknown): Settings {
   const s: Settings = {
     tone: v.tone as Tone,
     textSize: v.textSize as TextSize,
+    theme: (v.theme as ThemePref | undefined) ?? 'system',
     graceMinutes: v.graceMinutes,
     notificationsEnabled: v.notificationsEnabled,
     firstRunDone: v.firstRunDone,
@@ -189,6 +196,9 @@ function validateMeasurement(v: unknown, n: number, registry: MetricRegistry): M
   if (!isNonEmptyString(v.timeZone)) fail(`${at} has an invalid time zone.`);
   if (v.source !== 'manual' && v.source !== 'import') fail(`${at} has an invalid source.`);
   if (v.note !== undefined && typeof v.note !== 'string') fail(`${at} has an invalid note.`);
+  if (v.context !== undefined && !def.contexts?.some((c) => c.key === v.context)) {
+    fail(`${at} has an unknown context.`);
+  }
 
   const fieldKeys = new Set(def.fields.map((f) => f.key));
   if (!isObj(v.value)) fail(`${at} has missing or damaged values.`);
@@ -228,6 +238,7 @@ function validateMeasurement(v: unknown, n: number, registry: MetricRegistry): M
     updatedAt: toUtc(v.updatedAt as string),
   };
   if (v.note !== undefined) m.note = v.note;
+  if (typeof v.context === 'string') m.context = v.context;
   return m;
 }
 

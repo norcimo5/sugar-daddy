@@ -288,3 +288,56 @@ superpowers:verification-before-completion: format, lint, typecheck, unit, e2e, 
 Spec coverage: T1–T9 → Task 7; L1–L10 → Tasks 2,7; M1–M5 → Task 2 (+fixture test); H1–H6 →
 Tasks 3,7; R1–R7 → Tasks 3,7; E1–E7 → Tasks 4,5,7; S1–S8 → Task 7; X1–X4 → Tasks 4,7;
 non-functional → Tasks 5,6,8,10. Signatures above are the single source of truth.
+
+---
+
+# Phase 2: Storyboard features + HUD restyle (requirements §7)
+
+Same TDD and Global Constraints. Phase 2 tasks touch disjoint files and run in parallel.
+
+### Shared contract additions (`src/domain/types.ts`, owned by Task 11)
+
+```ts
+export interface ContextOption {
+  key: string;
+  label: string;
+}
+// MetricDefinition: contexts?: readonly ContextOption[]
+// Measurement / MeasurementInput: context?: string   (a key from def.contexts)
+export type ThemePref = 'system' | 'light' | 'dark';
+// Settings: theme: ThemePref   (DEFAULT_SETTINGS.theme = 'system')
+```
+
+### Task 11: Domain (subagent)
+
+- `metrics.ts`: GLUCOSE.contexts = before_meal "Before meal", after_meal "After meal",
+  fasting "Fasting", bedtime "Bedtime", other "Other"; `contextLabel(def, key): string | undefined`.
+- `measurement.ts`: validate `context` ∈ def.contexts (error key `context`: "Choose an option
+  from the list."); '' → undefined; revise keeps/updates it.
+- `backup.ts`: optional `measurement.context` validated; optional `settings.theme` validated
+  (absent → 'system').
+- `csv.ts`: `context` column (label) right after `note`.
+- New `share.ts`: `readingShareText(def, m, displayUnit, status: StatusKind): string` and
+  `summaryShareText(def, ms, rangeLabel, displayUnit): string`. No notes; status text only when
+  configured; ends with "Recorded with Sugar Daddy. Not medical advice."
+
+### Task 12: Theme + HUD design system (subagent)
+
+- `src/app/theme.ts`: `resolveTheme(pref: ThemePref, systemDark: boolean): 'light'|'dark'`,
+  `applyTheme(pref)` (sets `html[data-theme]`, updates `meta[name=theme-color]`, listens to
+  `prefers-color-scheme` when pref is 'system'; returns cleanup).
+- `src/styles.css` rewritten with HUD tokens for `[data-theme=dark]` and `[data-theme=light]`,
+  keeping every existing class name working; adds `.panel` (notched), `.label` (mono caps),
+  `.ring`, `.tile`, `.seg`, `.switch`, `.icon-btn`, `.sticky-cta`.
+- `src/ui/components/RingGauge.tsx`: props `{ value: string; unit: string; caption: string;
+fraction?: number | null; tone?: StatusKind }` — arc fill only when `fraction` is a number.
+- `scripts/contrast.test.mjs`: WCAG contrast of text tokens ≥ 4.5:1 and field borders ≥ 3:1
+  in both themes, parsed from styles.css.
+
+### Task 13: UI (lead), after 11–12
+
+LogEntry (unit seg, date + time fields, context select), MetricDetail screen `#/metric/:id`
+(chart point selection, recent rows with inline edit/delete, View all → `#/history/:metricId`,
+sticky Add), Today hero ring + tiles, Guide `#/guide`, Share (`src/app/share.ts`:
+`shareOrCopy(text): Promise<'shared'|'copied'|'unavailable'>`), Settings Appearance, header theme
+toggle, History context filter. Integration + e2e updates.

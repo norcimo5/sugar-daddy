@@ -7,6 +7,7 @@ const MAX_FUTURE_MS = 5 * 60 * 1000;
 type Errors = Record<string, string>;
 type Fields = Pick<Measurement, 'metricId' | 'value' | 'raw' | 'unit' | 'takenAt' | 'timeZone'> & {
   note: string | undefined;
+  context: string | undefined;
 };
 
 /** Validates input against `def` and returns the measurement fields shared by build/revise. */
@@ -27,6 +28,11 @@ function validateInput(
     const fields = validateFields(def, input.raw, input.unit);
     if (fields.ok) value = fields.value;
     else Object.assign(errors, fields.error);
+  }
+
+  const context = input.context?.trim() || undefined;
+  if (context !== undefined && !def.contexts?.some((c) => c.key === context)) {
+    errors.context = 'Choose an option from the list.';
   }
 
   const takenMs = Date.parse(input.takenAt);
@@ -50,12 +56,21 @@ function validateInput(
       takenAt: new Date(takenMs).toISOString(),
       timeZone: input.timeZone,
       note: note === '' ? undefined : note,
+      context,
     },
   };
 }
 
-function withNote(m: Omit<Measurement, 'note'>, note: string | undefined): Measurement {
-  return note === undefined ? m : { ...m, note };
+/** Adds the optional note/context only when present, so absent keys stay absent. */
+function withOptional(
+  m: Omit<Measurement, 'note' | 'context'>,
+  note: string | undefined,
+  context: string | undefined,
+): Measurement {
+  const out: Measurement = { ...m };
+  if (note !== undefined) out.note = note;
+  if (context !== undefined) out.context = context;
+  return out;
 }
 
 export function buildMeasurement(
@@ -66,13 +81,14 @@ export function buildMeasurement(
 ): Result<Measurement, Record<string, string>> {
   const r = validateInput(def, input, now);
   if (!r.ok) return r;
-  const { note, ...fields } = r.value;
+  const { note, context, ...fields } = r.value;
   const ts = now.toISOString();
   return {
     ok: true,
-    value: withNote(
+    value: withOptional(
       { id: newId(), ...fields, source: 'manual', createdAt: ts, updatedAt: ts },
       note,
+      context,
     ),
   };
 }
@@ -85,10 +101,10 @@ export function reviseMeasurement(
 ): Result<Measurement, Record<string, string>> {
   const r = validateInput(def, input, now);
   if (!r.ok) return r;
-  const { note, ...fields } = r.value;
+  const { note, context, ...fields } = r.value;
   return {
     ok: true,
-    value: withNote(
+    value: withOptional(
       {
         id: existing.id,
         ...fields,
@@ -97,6 +113,7 @@ export function reviseMeasurement(
         updatedAt: now.toISOString(),
       },
       note,
+      context,
     ),
   };
 }

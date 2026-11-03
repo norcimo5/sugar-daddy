@@ -12,6 +12,10 @@ import { History } from './screens/History';
 import { Trends } from './screens/Trends';
 import { Settings } from './screens/Settings';
 import { About } from './screens/About';
+import { Guide } from './screens/Guide';
+import { MetricDetail } from './screens/MetricDetail';
+import { applyTheme, resolveTheme } from '../app/theme';
+import { Icon } from './components/Icon';
 import { CARE_TEAM_NOTE, DISCLAIMER, TAGLINE, welcomeMessage } from '../domain/copy';
 import { evaluateReminders } from '../domain/reminders';
 import {
@@ -56,6 +60,28 @@ export function App(props: AppProps) {
   }, []);
 
   const ui = useMemo<UiApi>(() => ({ toast: showToast, navigate: hashNavigate }), [showToast]);
+
+  // Theme preference (System / Light / Dark).
+  useEffect(() => applyTheme(data.settings.theme), [data.settings.theme]);
+
+  // Online/offline indicator (data never leaves the device either way).
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(navigator.onLine);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', on);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', on);
+    };
+  }, []);
+  const systemDark =
+    typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+  const effectiveTheme = resolveTheme(data.settings.theme, systemDark);
+  const toggleTheme = () =>
+    data.actions
+      .saveSettings({ theme: effectiveTheme === 'dark' ? 'light' : 'dark' })
+      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'Not saved.', 'error'));
 
   // Text size preference.
   useEffect(() => {
@@ -133,7 +159,13 @@ export function App(props: AppProps) {
         screen = <LogEntry editId={route.id} />;
         break;
       case 'history':
-        screen = <History />;
+        screen = <History metricId={route.metricId} key={route.metricId ?? 'all'} />;
+        break;
+      case 'metric':
+        screen = <MetricDetail metricId={route.metricId} key={route.metricId} />;
+        break;
+      case 'guide':
+        screen = <Guide />;
         break;
       case 'trends':
         screen = <Trends />;
@@ -150,7 +182,10 @@ export function App(props: AppProps) {
   }
 
   const tab =
-    route.name === 'log' || route.name === 'edit'
+    route.name === 'log' ||
+    route.name === 'edit' ||
+    route.name === 'metric' ||
+    route.name === 'guide'
       ? 'today'
       : route.name === 'about'
         ? 'settings'
@@ -171,10 +206,30 @@ export function App(props: AppProps) {
       <div class="app">
         <header class="app-header">
           <img src="/icons/icon-192.png" alt="" width={40} height={40} />
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h1 class="brand">Sugar Daddy</h1>
             <p class="tagline">{TAGLINE}</p>
           </div>
+          <span
+            class={`status-pill${online ? '' : ' offline'}`}
+            title={
+              online ? 'Your readings are saved on this device' : 'Offline — the app still works'
+            }
+          >
+            <span class="dot" aria-hidden="true"></span>
+            {online ? 'Saved on device' : 'Offline'}
+          </span>
+          <a class="icon-btn" href="#/guide" aria-label="Guide: how to log a reading">
+            <Icon name="guide" />
+          </a>
+          <button
+            type="button"
+            class="icon-btn theme-toggle"
+            aria-label={effectiveTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={toggleTheme}
+          >
+            <Icon name={effectiveTheme === 'dark' ? 'sun' : 'moon'} />
+          </button>
         </header>
 
         {props.updateReady ? (

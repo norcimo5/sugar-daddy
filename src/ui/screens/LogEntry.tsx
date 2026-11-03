@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
-import type { Measurement, MetricDefinition } from '../../domain/types';
+import type { Measurement, MetricDefinition, Unit } from '../../domain/types';
 import { useApp } from '../context';
 import { primaryMetric, unitLabel } from '../../domain/metrics';
 import { evaluateStatus } from '../../domain/thresholds';
@@ -55,16 +55,20 @@ export function LogEntry(props: { metricId?: string; editId?: string }) {
 function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measurement }) {
   const app = useApp();
   const config = app.configFor(def.id);
-  const unit = existing?.unit ?? config?.unit ?? def.defaultUnit;
+  const [unit, setUnit] = useState<Unit>(existing?.unit ?? config?.unit ?? def.defaultUnit);
+  const [context, setContext] = useState(existing?.context ?? '');
   const guard = useMemo(() => createSubmitGuard(), []);
   const [raw, setRaw] = useState<Record<string, string>>(() => ({ ...(existing?.raw ?? {}) }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [showTime, setShowTime] = useState(false);
-  const [initialTakenAtLocal] = useState(() =>
-    existing ? toLocalInputValue(new Date(existing.takenAt)) : '',
+  // Date and time are shown up front. Until the user changes them, a new reading is stamped
+  // with the moment Save is tapped and an edited reading keeps its stored instant exactly.
+  const [initialLocal] = useState(() =>
+    toLocalInputValue(existing ? new Date(existing.takenAt) : app.clock.now()),
   );
-  const [takenAtLocal, setTakenAtLocal] = useState(initialTakenAtLocal);
+  const [dateStr, setDateStr] = useState(initialLocal.slice(0, 10));
+  const [timeStr, setTimeStr] = useState(initialLocal.slice(11, 16));
+  const timeTouched = `${dateStr}T${timeStr}` !== initialLocal;
   const [deleting, setDeleting] = useState(false);
   const [showNote, setShowNote] = useState(Boolean(existing?.note));
   const [note, setNote] = useState(existing?.note ?? '');
@@ -80,18 +84,15 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
     if (guard.busy) return; // a save is already in flight (rapid repeated taps)
     setSaveError(null);
     let takenAt: string;
-    if (existing && takenAtLocal === initialTakenAtLocal) {
-      // Time not touched: keep the stored instant exactly (seconds and all).
-      takenAt = existing.takenAt;
-    } else if (takenAtLocal) {
-      const d = fromLocalInputValue(takenAtLocal);
+    if (!timeTouched) {
+      takenAt = existing ? existing.takenAt : app.clock.now().toISOString();
+    } else {
+      const d = fromLocalInputValue(`${dateStr}T${timeStr}`);
       if (!d) {
         setErrors({ takenAt: 'Enter a valid date and time.' });
         return;
       }
       takenAt = d.toISOString();
-    } else {
-      takenAt = app.clock.now().toISOString();
     }
     setSaving(true);
     try {
@@ -104,6 +105,7 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
             takenAt,
             timeZone: existing?.timeZone ?? currentTimeZone(),
             note: showNote ? note : existing?.note,
+            context: context || undefined,
           },
           existing,
         ),
@@ -147,6 +149,15 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
     <section aria-labelledby="log-h">
       <h2 id="log-h">{title}</h2>
       <form onSubmit={onSubmit} noValidate class="card">
+        {def.units.length > 1 ? (
+          <div class="seg" role="group" aria-label="Unit">
+            {def.units.map((u) => (
+              <button key={u} type="button" aria-pressed={unit === u} onClick={() => setUnit(u)}>
+                {unitLabel(def, u)}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {def.fields.map((f, i) => {
           const err = errors[f.key];
           const lim = f.limits(unit);
@@ -185,45 +196,61 @@ function EntryForm({ def, existing }: { def: MetricDefinition; existing?: Measur
           );
         })}
 
-        <div class="field">
-          {showTime ? (
-            <>
-              <label for="f-time">Date and time taken</label>
+        <fieldset class="field plain-fieldset">
+          <legend class="label">Date and time taken</legend>
+          <div class="grid-2">
+            <div>
+              <label for="f-date">Date</label>
+              <input
+                id="f-date"
+                type="date"
+                value={dateStr}
+                max={toLocalInputValue(app.clock.now()).slice(0, 10)}
+                aria-invalid={errors.takenAt ? 'true' : undefined}
+                onInput={(e) => setDateStr((e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <div>
+              <label for="f-time">Time</label>
               <input
                 id="f-time"
-                type="datetime-local"
-                value={takenAtLocal}
-                max={toLocalInputValue(app.clock.now())}
+                type="time"
+                value={timeStr}
                 aria-invalid={errors.takenAt ? 'true' : undefined}
-                onInput={(e) => setTakenAtLocal((e.target as HTMLInputElement).value)}
+                onInput={(e) => setTimeStr((e.target as HTMLInputElement).value)}
               />
-            </>
-          ) : (
-            <p style={{ margin: 0 }}>
-              <span class="muted">Time: </span>
-              <strong>
-                {takenAtLocal
-                  ? formatDateTime(fromLocalInputValue(takenAtLocal) ?? app.clock.now())
-                  : 'Now'}
-              </strong>{' '}
-              <button
-                type="button"
-                class="btn-link"
-                onClick={() => {
-                  if (!takenAtLocal) setTakenAtLocal(toLocalInputValue(app.clock.now()));
-                  setShowTime(true);
-                }}
-              >
-                Change time
-              </button>
-            </p>
-          )}
+            </div>
+          </div>
+          {!timeTouched && !existing ? <p class="hint">Saved with the current time.</p> : null}
           {errors.takenAt ? (
             <div class="error" role="alert">
               {errors.takenAt}
             </div>
           ) : null}
-        </div>
+        </fieldset>
+
+        {def.contexts?.length ? (
+          <div class="field">
+            <label for="f-context">When was it taken? (optional)</label>
+            <select
+              id="f-context"
+              value={context}
+              onChange={(e) => setContext((e.target as HTMLSelectElement).value)}
+            >
+              <option value="">Not specified</option>
+              {def.contexts.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            {errors.context ? (
+              <div class="error" role="alert">
+                {errors.context}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div class="field">
           {showNote ? (

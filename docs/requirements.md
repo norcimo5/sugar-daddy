@@ -152,3 +152,35 @@ Primary user: a hospitalized, non-technical, possibly tired patient using one ha
 
 Everything listed as non-goals in PROMPT.md §2, plus: quiet hours, cloud sync, push server,
 encryption at rest (not implemented and not claimed).
+
+## 7. Storyboard and style update (operator-approved 2026-11-03)
+
+Source: operator storyboard screenshots of an existing tracker (functionality only) and a
+sci-fi "HUD" style reference. Approved scope, all testable:
+
+- **F1 Reading context.** Optional per-reading context from the metric definition (glucose:
+  Before meal, After meal, Fasting, Bedtime, Other). Shown on rows, exported in CSV (`context`
+  column), round-trips in backups, filterable in History.
+- **F2 Entry screen.** Unit switch (segmented) for metrics with several units — the reading keeps
+  the unit chosen; visible date and time fields defaulting to now (common path unchanged: type the
+  number, Save).
+- **F3 Per-measurement screen** (`#/metric/:id`): chart on top (tap/focus a point to see value,
+  time, context, status), five most recent readings with inline Edit and Delete (delete still
+  confirms), "View all" → History filtered to that metric, sticky "Add new record".
+- **F4 Home tiles.** Today shows a hero ring with the latest glucose, then one tile per enabled
+  measurement (latest value + Record).
+- **F5 Share.** User-initiated sharing of one reading or a period summary via the system share
+  sheet (`navigator.share`), falling back to copying text. Notes are not included. Nothing is sent
+  automatically.
+- **F6 Guide.** A short, non-medical "How to log a reading" page.
+- **F7 Theme.** Settings → Appearance: System / Light / Dark, plus a quick toggle in the header.
+- **S1 HUD style, with guardrails.** Dark: navy-black, neon cyan, amber accent, notched outline
+  panels, ring gauge, mono uppercase letter-spaced _labels_. Light: pale blue-grey, deep teal,
+  dark amber, minimal glow. Readings and sentences stay normal case and large; labels ≥ 14 px;
+  text contrast ≥ 4.5:1 in both themes; no animation; glow removed under reduced motion. The ring
+  shows range position only when clinician thresholds are configured.
+
+Explicitly **not** adopted from the storyboard (PROMPT §2 non-goals and §5 safety): AI doctor
+chat, generated medical advice or urgency text, status labels derived from age/sex, collection of
+age/sex, "Was this helpful?" feedback, weather, articles, chatbot, camera heart-rate, steps,
+hydration, food scanner, BMI.

@@ -1,4 +1,4 @@
-import type { TextSize, Tone } from '../../domain/types';
+import type { TextSize, ThemePref, Tone } from '../../domain/types';
 import { useApp } from '../context';
 import { MetricSettings } from './settings/MetricSettings';
 import { ReminderSettings } from './settings/ReminderSettings';
@@ -7,7 +7,7 @@ import { DataSettings } from './settings/DataSettings';
 
 export function Settings() {
   const app = useApp();
-  const save = async (patch: { tone?: Tone; textSize?: TextSize }) => {
+  const save = async (patch: { tone?: Tone; textSize?: TextSize; theme?: ThemePref }) => {
     try {
       await app.actions.saveSettings(patch);
       app.toast('Saved.');
@@ -32,6 +32,18 @@ export function Settings() {
 
       <div class="card">
         <h3 style={{ marginTop: 0 }}>Display</h3>
+        <div class="field">
+          <label for="theme">Appearance</label>
+          <select
+            id="theme"
+            value={app.settings.theme}
+            onChange={(e) => save({ theme: (e.target as HTMLSelectElement).value as ThemePref })}
+          >
+            <option value="system">Match my phone</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
         <div class="field">
           <label for="tone">Message style</label>
           <select

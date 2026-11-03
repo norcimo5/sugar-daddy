@@ -236,8 +236,8 @@ test.describe('reminders with a controlled clock', () => {
     await expect(page.getByTestId('missed-banner')).toContainText('8:00 AM');
     await page.getByTestId('missed-banner').getByRole('link', { name: 'Log now' }).click();
     await page.getByLabel(/^Glucose in /).fill('105');
-    await page.getByRole('button', { name: 'Change time' }).click();
-    await page.getByLabel('Date and time taken').fill('2026-06-15T08:10');
+    await page.getByLabel('Date', { exact: true }).fill('2026-06-15');
+    await page.getByLabel('Time', { exact: true }).fill('08:10');
     await page.getByTestId('save').click();
     await expect(page.getByTestId('toast')).toContainText('Reading saved.');
     await expect(page.getByTestId('missed-banner')).toHaveCount(0);
