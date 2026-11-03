@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "glucose",
+  "project_id": "17df9c42-83c4-4431-bf3b-e93e2054930d"
+}
