@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Sugar Daddy (maskable)</title>
+  <!-- Full-bleed plum; artwork scaled to 80% and centred so it sits inside the 80% safe zone. -->
+  <rect x="0" y="0" width="512" height="512" fill="#7a2e4f"/>
+  <g transform="translate(256 256) scale(0.8) translate(-256 -260)">
+    <path d="M256 76 C300 146 392 218 392 308 A136 136 0 0 1 120 308 C120 218 212 146 256 76 Z" fill="#fff6ef"/>
+    <path d="M300 262 C290 247 274 240 255 240 C229 240 210 255 210 277 C210 332 304 308 304 360 C304 384 283 400 256 400 C234 400 216 392 204 376" fill="none" stroke="#7a2e4f" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

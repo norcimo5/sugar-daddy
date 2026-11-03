@@ -126,8 +126,8 @@ Primary user: a hospitalized, non-technical, possibly tired patient using one ha
 ## 4. Safety (FR-X)
 
 - X1 No diagnosis, advice, dose calculators, or emergency language.
-- X2 Status labels only: "In target range", "Below target", "Above target", "Below alert
-  threshold", "Above alert threshold", or "No target range configured". Neutral wording always.
+- X2 Status labels only: "In target range", "Below target range", "Above target range",
+  "Below low alert", "Above high alert", or "No target range configured". Neutral wording always.
 - X3 Out-of-range readings never get playful copy or celebration.
 - X4 Persistent disclaimer in About and on first run: "Sugar Daddy records and displays
   measurements. It does not provide medical advice. Follow your care team's instructions." plus

@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
-import { precachePlugin } from './vite-plugin-precache';
+import { precachePlugin } from './vite-plugin-precache.ts';
 import pkg from './package.json' with { type: 'json' };
 
 export default defineConfig({
@@ -15,7 +15,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,mjs}'],
+    include: [
+      'src/**/*.test.{ts,tsx}',
+      'scripts/**/*.test.{ts,mjs}',
+      'vite-plugin-precache.test.ts',
+    ],
     passWithNoTests: true,
   },
 });

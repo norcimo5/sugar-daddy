@@ -14,6 +14,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ['**/*.test.{ts,tsx,mjs}', 'e2e/**/*.ts'],
+    rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
+  },
+  {
     files: ['src/domain/**/*.ts'],
     rules: {
       'no-restricted-imports': [
