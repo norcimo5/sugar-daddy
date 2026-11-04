@@ -470,4 +470,17 @@ describe('App integration', () => {
       expect(screen.getByTestId('ios-steps')).toHaveTextContent('Add to Home Screen');
     });
   });
+
+  it('shows no connection label while online, and a small Offline tag only while offline', async () => {
+    await setup();
+    expect(screen.queryByText(/saved on device/i)).toBeNull();
+    expect(screen.queryByText('Offline')).toBeNull();
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    window.dispatchEvent(new Event('offline'));
+    expect(await screen.findByText('Offline')).toBeInTheDocument();
+    onLine.mockReturnValue(true);
+    window.dispatchEvent(new Event('online'));
+    await waitFor(() => expect(screen.queryByText('Offline')).toBeNull());
+    onLine.mockRestore();
+  });
 });

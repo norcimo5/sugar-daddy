@@ -947,23 +947,23 @@ legend {
 .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  min-height: 32px;
+  gap: 6px;
+  padding: 2px 8px;
+  min-height: 24px;
   border: 1px solid currentColor;
   border-radius: 999px;
   font-family: var(--mono);
   font-size: 0.875rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--status-ok);
   background: var(--surface);
 }
 .status-pill .dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
   box-shadow: var(--dot-glow, none);

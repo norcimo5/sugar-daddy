@@ -220,15 +220,16 @@ export function App(props: AppProps) {
             <h1 class="brand">Sugar Daddy</h1>
             <p class="tagline">{TAGLINE}</p>
           </div>
-          <span
-            class={`status-pill${online ? '' : ' offline'}`}
-            title={
-              online ? 'Your readings are saved on this device' : 'Offline — the app still works'
-            }
-          >
-            <span class="dot" aria-hidden="true"></span>
-            {online ? 'Saved on device' : 'Offline'}
-          </span>
+          {online ? null : (
+            // Shown only when it matters. Readings are always saved on the device either way.
+            <span
+              class="status-pill offline"
+              title="Offline — the app still works and saves readings"
+            >
+              <span class="dot" aria-hidden="true"></span>
+              Offline
+            </span>
+          )}
           <a class="icon-btn" href="#/guide" aria-label="Guide: how to log a reading">
             <Icon name="guide" />
           </a>
