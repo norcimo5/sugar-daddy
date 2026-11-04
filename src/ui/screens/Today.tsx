@@ -7,6 +7,7 @@ import {
 } from '../../domain/metrics';
 import { targetFraction } from '../ringFraction';
 import { RingGauge } from '../components/RingGauge';
+import { useInstall } from '../../app/install';
 import { evaluateStatus } from '../../domain/thresholds';
 import { formatDateLong, formatTime, localDateKey, startOfLocalDay } from '../../domain/time';
 import { evaluateReminders } from '../../domain/reminders';
@@ -21,6 +22,7 @@ export function Today() {
   const now = useNow(app.clock);
   const glucose = primaryMetric(app.registry);
   const glucoseConfig = app.configFor(glucose.id);
+  const { mode: installMode, promptInstall } = useInstall();
   const glucoseUnit = glucoseConfig?.unit ?? glucose.defaultUnit;
   const whenLabel = (iso: string) =>
     localDateKey(new Date(iso)) === localDateKey(now)
@@ -137,6 +139,53 @@ export function Today() {
         <Icon name="plus" />
         {glucose.logLabel}
       </a>
+
+      {installMode !== 'installed' && !app.settings.installCardDismissed ? (
+        <div
+          class="card panel-accent install-card"
+          role="region"
+          aria-label="Install the app"
+          data-testid="install-card"
+        >
+          <p class="label" style={{ marginTop: 0 }}>
+            Install the app
+          </p>
+          <p style={{ margin: '4px 0 10px' }}>
+            Open Sugar Daddy from your home screen like a normal app — it works even without
+            internet.
+          </p>
+          <div class="btn-row">
+            {installMode === 'prompt' ? (
+              <button
+                type="button"
+                class="btn btn-primary"
+                onClick={async () => {
+                  if (await promptInstall())
+                    app.toast('Installed. Open Sugar Daddy from your home screen.');
+                }}
+              >
+                Install
+              </button>
+            ) : (
+              <a class="btn btn-primary" href="#/install">
+                How to install
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() =>
+                app.actions
+                  .saveSettings({ installCardDismissed: true })
+                  .catch((e: unknown) =>
+                    app.toast(e instanceof Error ? e.message : 'Not saved.', 'error'),
+                  )
+              }
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <ul class="tiles" aria-label="Measurements">
         {app.enabledMetrics.map((d) => {

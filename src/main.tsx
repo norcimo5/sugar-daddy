@@ -6,6 +6,10 @@ import { createRepo } from './db/repo';
 import { metricRegistry } from './domain/metrics';
 import { appClock } from './app/clock';
 import { registerServiceWorker } from './app/sw-register';
+import { initInstall } from './app/install';
+
+// Capture the browser's install offer before anything else (it can fire very early).
+initInstall();
 import { App } from './ui/App';
 import type { Repo } from './db/repo';
 

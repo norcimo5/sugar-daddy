@@ -80,6 +80,17 @@ export function verifyDist(dist) {
       const declared = String(icon.sizes ?? '').split(/\s+/);
       check(name, size && declared.includes(`${size.width}x${size.height}`), JSON.stringify(size));
     }
+    // Screenshots (optional; Chrome shows them in the richer install dialog).
+    for (const shot of Array.isArray(manifest.screenshots) ? manifest.screenshots : []) {
+      const name = `screenshot ${shot.src} matches sizes ${shot.sizes}`;
+      const file = distPath(dist, String(shot.src ?? ''));
+      const size = existsSync(file) ? readPngSize(readFileSync(file)) : null;
+      check(
+        name,
+        size && `${size.width}x${size.height}` === String(shot.sizes),
+        JSON.stringify(size),
+      );
+    }
   }
 
   // Apple touch icon

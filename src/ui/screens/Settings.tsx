@@ -1,5 +1,6 @@
 import type { TextSize, ThemePref, Tone } from '../../domain/types';
 import { useApp } from '../context';
+import { useInstall } from '../../app/install';
 import { MetricSettings } from './settings/MetricSettings';
 import { ReminderSettings } from './settings/ReminderSettings';
 import { NotificationSettings } from './settings/NotificationSettings';
@@ -7,6 +8,7 @@ import { DataSettings } from './settings/DataSettings';
 
 export function Settings() {
   const app = useApp();
+  const { mode: installMode } = useInstall();
   const save = async (patch: { tone?: Tone; textSize?: TextSize; theme?: ThemePref }) => {
     try {
       await app.actions.saveSettings(patch);
@@ -74,6 +76,11 @@ export function Settings() {
 
       <DataSettings />
 
+      {installMode !== 'installed' ? (
+        <a class="btn btn-block" href="#/install" style={{ marginBottom: '10px' }}>
+          Install app on this phone
+        </a>
+      ) : null}
       <a class="btn btn-block" href="#/about">
         About, privacy and help
       </a>

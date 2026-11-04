@@ -13,6 +13,7 @@ describe('parseRoute', () => {
     ['#/metric/glucose', { name: 'metric', metricId: 'glucose' }],
     ['#/metric', { name: 'today' }],
     ['#/guide', { name: 'guide' }],
+    ['#/install', { name: 'install' }],
     ['#/trends', { name: 'trends' }],
     ['#/settings', { name: 'settings' }],
     ['#/about', { name: 'about' }],

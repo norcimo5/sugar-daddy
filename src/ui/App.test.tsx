@@ -433,4 +433,41 @@ describe('App integration', () => {
       await waitFor(() => expect(document.documentElement.dataset.theme).toBe(target));
     });
   });
+
+  describe('install the app', () => {
+    it('shows the install card with manual steps until the browser offers one-tap install', async () => {
+      await setup();
+      const card = within(screen.getByTestId('install-card'));
+      expect(card.getByRole('link', { name: 'How to install' })).toHaveAttribute(
+        'href',
+        '#/install',
+      );
+
+      const prompt = vi.fn().mockResolvedValue(undefined);
+      const ev = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+        prompt,
+        userChoice: Promise.resolve({ outcome: 'accepted' }),
+      });
+      window.dispatchEvent(ev);
+      fireEvent.click(await card.findByRole('button', { name: 'Install' }));
+      await waitFor(() => expect(prompt).toHaveBeenCalledTimes(1));
+      expect(await screen.findByTestId('live')).toHaveTextContent('Installed');
+    });
+
+    it('"Not now" hides the card and remembers it', async () => {
+      const { repo } = await setup();
+      fireEvent.click(
+        within(screen.getByTestId('install-card')).getByRole('button', { name: 'Not now' }),
+      );
+      await waitFor(() => expect(screen.queryByTestId('install-card')).toBeNull());
+      expect((await repo.getSettings()).installCardDismissed).toBe(true);
+    });
+
+    it('install screen shows Android and iPhone steps when no prompt is available', async () => {
+      await setup();
+      await go('#/install');
+      expect(await screen.findByTestId('android-steps')).toHaveTextContent('Install app');
+      expect(screen.getByTestId('ios-steps')).toHaveTextContent('Add to Home Screen');
+    });
+  });
 });

@@ -162,16 +162,28 @@ paths.
 
 ## Installing on a phone
 
-Open the deployed HTTPS address once while online, then:
+Send the link: **https://norcimo5.github.io/sugar-daddy/**. People open it and install from
+inside the app — no app store (same approach as `florida-test-webapp`):
 
-### Android
+- **Android (Chrome, Edge, Samsung Internet):** Today shows an **Install the app** card with an
+  **Install** button. One tap opens the browser's own install dialog (with app screenshots) →
+  **Install**. The card hides itself once installed, or after **Not now**; Settings keeps an
+  **Install app on this phone** button.
+- **iPhone/iPad:** the card's **How to install** opens step-by-step Share → **Add to Home
+  Screen** instructions (Apple offers no install button to websites).
+- Already installed → no card, no Settings button.
+
+If the Install button doesn't appear (the browser decides when it's offered — usually after the
+page has fully loaded once), use the manual steps below.
+
+### Android (manual)
 
 - **Chrome:** open the address → tap the menu **⋮** → **Install app** (on some versions:
   **Add to Home screen**) → confirm.
 - **Samsung Internet:** similar: open the menu and choose the add-to-home-screen / install
   option (or tap the install icon in the address bar, if shown).
 
-### iPhone / iPad
+### iPhone / iPad (manual)
 
 1. On iOS older than 16.4 you must use **Safari**. From iOS 16.4, other browsers can also use
    Share → Add to Home Screen.

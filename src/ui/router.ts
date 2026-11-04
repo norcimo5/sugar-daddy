@@ -15,6 +15,7 @@ export type Route =
   | { name: 'history'; metricId?: string }
   | { name: 'metric'; metricId: string }
   | { name: 'guide' }
+  | { name: 'install' }
   | { name: 'trends' }
   | { name: 'settings' }
   | { name: 'about' };
@@ -43,6 +44,8 @@ export function parseRoute(hash: string): Route {
       return parts[1] ? { name: 'metric', metricId: parts[1] } : { name: 'today' };
     case 'guide':
       return { name: 'guide' };
+    case 'install':
+      return { name: 'install' };
     case 'trends':
     case 'settings':
     case 'about':

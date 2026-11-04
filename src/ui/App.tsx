@@ -13,6 +13,7 @@ import { Trends } from './screens/Trends';
 import { Settings } from './screens/Settings';
 import { About } from './screens/About';
 import { Guide } from './screens/Guide';
+import { Install } from './screens/Install';
 import { MetricDetail } from './screens/MetricDetail';
 import { applyTheme, resolveTheme } from '../app/theme';
 import { Icon } from './components/Icon';
@@ -167,6 +168,9 @@ export function App(props: AppProps) {
       case 'guide':
         screen = <Guide />;
         break;
+      case 'install':
+        screen = <Install />;
+        break;
       case 'trends':
         screen = <Trends />;
         break;
@@ -185,7 +189,8 @@ export function App(props: AppProps) {
     route.name === 'log' ||
     route.name === 'edit' ||
     route.name === 'metric' ||
-    route.name === 'guide'
+    route.name === 'guide' ||
+    route.name === 'install'
       ? 'today'
       : route.name === 'about'
         ? 'settings'

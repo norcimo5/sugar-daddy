@@ -111,6 +111,28 @@ describe('verifyDist', () => {
     expect(failures(verifyDist(dist))).toEqual([]);
   });
 
+  it('checks manifest screenshots exist with their declared sizes', () => {
+    mkdirSync(join(dist, 'screenshots'));
+    writeFileSync(join(dist, 'screenshots/today.png'), fakePng(1080, 2400));
+    const withShots = {
+      ...manifest,
+      screenshots: [
+        {
+          src: 'screenshots/today.png',
+          sizes: '1080x2400',
+          type: 'image/png',
+          form_factor: 'narrow',
+        },
+      ],
+    };
+    writeFileSync(join(dist, 'manifest.webmanifest'), JSON.stringify(withShots));
+    expect(failures(verifyDist(dist))).toEqual([]);
+    writeFileSync(join(dist, 'screenshots/today.png'), fakePng(1000, 2000));
+    expect(failures(verifyDist(dist))).toEqual([
+      'screenshot screenshots/today.png matches sizes 1080x2400',
+    ]);
+  });
+
   it('still fails when index.html links some other manifest', () => {
     writeFileSync(
       join(dist, 'index.html'),

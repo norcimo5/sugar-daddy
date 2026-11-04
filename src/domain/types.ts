@@ -142,6 +142,8 @@ export interface Settings {
   notificationsEnabled: boolean;
   lastBackupAt?: string;
   firstRunDone: boolean;
+  /** The Today "Install the app" card was dismissed ("Not now"). */
+  installCardDismissed?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = Object.freeze({
